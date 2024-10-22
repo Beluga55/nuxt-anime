@@ -1,0 +1,196 @@
+<script setup lang="ts">
+definePageMeta({
+  layout: "auth-layout",
+});
+
+import { object, string } from "zod";
+import { useField, useForm } from "vee-validate";
+import { toTypedSchema } from "@vee-validate/zod";
+import { Checkbox } from "@/components/ui/checkbox";
+import googleSvg from "@/assets/images/google_logo.svg";
+import {
+  useTokenClient,
+  type AuthCodeFlowSuccessResponse,
+  type AuthCodeFlowErrorResponse,
+} from "vue3-google-signin";
+import { useWindowSize } from "@vueuse/core";
+import nahida from "@/assets/images/nahida.png";
+import { useAuthStore } from "~/store/auth";
+import { useToast } from '@/components/ui/toast/use-toast'
+
+// Get the window size
+const { width } = useWindowSize();
+const authStore = useAuthStore();
+const { toast, dismiss } = useToast();
+
+// Validation Schema for the form (email, password)
+const validationSchema = toTypedSchema(
+  object({
+    email: string().min(1, { message: "Email is required" }).email({
+      message: "Invalid email format",
+    }),
+    password: string().min(8, {
+      message: "Password must be at least 8 characters",
+    }),
+  })
+);
+
+const { handleSubmit, errors, resetForm } = useForm({
+  validationSchema,
+});
+
+const { value: email } = useField("email");
+const { value: password } = useField("password");
+
+const handleLogin = handleSubmit(async () => {
+  const body = {
+    email: email.value,
+    password: password.value,
+  };
+
+  try {
+    await authStore.login(body);
+  } catch (error) {
+    toast({
+      variant: "destructive",
+      description: error.message,
+    })
+    
+    setTimeout(() => {
+      dismiss()
+    }, 5000)
+  }
+
+  // Reset the form
+  resetForm();
+});
+
+const handleOnSuccess = (response: AuthCodeFlowSuccessResponse) => {
+  // Login with google
+  console.log("Access Token: ", response.access_token);
+};
+
+const handleOnError = (errorResponse: AuthCodeFlowErrorResponse) => {
+  console.log("Error: ", errorResponse);
+};
+
+const { isReady, login } = useTokenClient({
+  onSuccess: handleOnSuccess,
+  onError: handleOnError,
+});
+</script>
+
+<template>
+  <div :class="[width >= 900 && 'grid items-center h-screen']">
+    <div
+      class="justify-self-center"
+      :class="[
+        width >= 900
+          ? 'w-[400px] px-0 py-0'
+          : 'backdrop-filter absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2  w-[calc(100%-2.5rem)] max-w-[450px] px-5 py-5',
+      ]"
+    >
+      <img
+        :src="nahida"
+        alt="Nahida"
+        class="mx-auto rounded-full bottom-[-25px] w-[200px] h-[200px] object-cover"
+      />
+      <form class="">
+        <div :class="[width >= 900 ? 'text-black text-center' : 'text-white']">
+          <h2 class="font-extrabold header-font">Welcome back !</h2>
+          <p class="mt-1 text-sm">There's lots of promotions awaits you.</p>
+
+          <div class="mt-5">
+            <!-- Name, Email, Subject, Message -->
+            <div>
+              <input
+                type="text"
+                :placeholder="errors.email ? errors.email : 'Email'"
+                class="w-full text-black placeholder-gray-500 py-[0.65rem] px-4 text-[13px] border-[1px] border-border-color outline-none rounded-sm"
+                :class="{
+                  'placeholder-red-700': errors.email,
+                  'placeholder-gray-500': !errors.email,
+                }"
+                v-model="email"
+              />
+            </div>
+            <div>
+              <input
+                type="password"
+                :placeholder="errors.password ? errors.password : 'Password'"
+                class="w-full mt-3 placeholder-gray-500 py-[0.65rem] px-4 text-[13px] text-black border-[1px] border-border-color outline-none rounded-sm"
+                :class="{
+                  'placeholder-red-700': errors.password,
+                  'placeholder-gray-500': !errors.password,
+                }"
+                v-model="password"
+              />
+            </div>
+
+            <!-- Remember me and forgot password -->
+            <div class="flex items-center justify-between mt-5 mb-3">
+              <div class="flex items-center gap-2">
+                <Checkbox id="remember" />
+                <label
+                  for="remember"
+                  class="text-xs font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                >
+                  Remember me
+                </label>
+              </div>
+              <NuxtLink
+                to="/forgot-password"
+                class="text-xs font-medium leading-none"
+                >Forgot password?</NuxtLink
+              >
+            </div>
+
+            <Button
+              @click="handleLogin"
+              variant="default"
+              class="w-full mt-2 text-xs"
+              >Login</Button
+            >
+
+            <Button
+              variant="secondary"
+              class="w-full mt-2 text-xs border-[1px] border-border-color"
+              :disabled="!isReady"
+              @click.prevent="() => login()"
+            >
+              <img
+                :src="googleSvg"
+                alt="Google Logo"
+                class="inline-block w-4 h-4 mr-2"
+              />
+              Login with Google
+            </Button>
+
+            <div class="flex items-center justify-center gap-2 mt-6">
+              <span class="text-xs">Don't have an account?</span>
+              <NuxtLink to="/register" class="text-xs font-medium"
+                >Register</NuxtLink
+              >
+            </div>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+</template>
+
+<style scoped>
+.header-font {
+  font-size: clamp(1.75rem, 5vw, 2.5rem);
+}
+
+.backdrop-filter {
+  backdrop-filter: blur(16px) saturate(180%);
+  -webkit-backdrop-filter: blur(16px) saturate(180%);
+  background-color: rgba(17, 25, 40, 0.75);
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.125);
+}
+
+/* absolute z-10 -translate-x-1/2 -translate-y-1/2 top-1/2 left-1/2 w-[calc(100%-2rem)] */
+</style>
