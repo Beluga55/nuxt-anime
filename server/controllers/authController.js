@@ -87,20 +87,23 @@ export const loginGoogle = async (req, res) => {
   try {
     const { given_name } = req.body;
 
-    const existingUser = await User.findOne({ username: given_name });
+    let user = await User.findOne({ username: given_name });
 
-    if (!existingUser) {
+    if (!user) {
       // Create a new user
-      const user = new User({
+      user = new User({
         username: given_name,
+        email: "",
+        isAdmin: false,
+        image: "",
         isGoogle: true,
       });
 
       await user.save();
     }
 
-    // Create a JWT token
-    const token = jwt.sign({ id: existingUser._id }, process.env.JWT_SECRET, {
+    // Create a JWT token using the user variable (either existing or newly created)
+    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
       expiresIn: "1h",
     });
 
