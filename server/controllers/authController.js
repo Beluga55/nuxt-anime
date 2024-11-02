@@ -85,7 +85,7 @@ export const loginUser = async (req, res) => {
 
 export const loginGoogle = async (req, res) => {
   try {
-    const { given_name } = req.body;
+    const { given_name, email } = req.body;
 
     let user = await User.findOne({ username: given_name });
 
@@ -93,7 +93,7 @@ export const loginGoogle = async (req, res) => {
       // Create a new user
       user = new User({
         username: given_name,
-        email: "",
+        email: email,
         isAdmin: false,
         image: "",
         isGoogle: true,
