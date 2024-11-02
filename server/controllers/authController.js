@@ -1,15 +1,15 @@
 import User from "../models/User.js";
 import { getSignedUrl } from "./getImagesFromCloud.js";
-import bcrypt from 'bcryptjs'
-import jwt from 'jsonwebtoken'
-import * as dotenv from 'dotenv'
+import bcrypt from "bcryptjs";
+import jwt from "jsonwebtoken";
+import * as dotenv from "dotenv";
 
-dotenv.config()
+dotenv.config();
 
 export const registerUser = async (req, res) => {
   try {
     const { username, email, password, confirmPassword } = req.body;
-    
+
     const existingUser = await User.findOne({ email });
 
     if (existingUser) {
@@ -32,7 +32,7 @@ export const registerUser = async (req, res) => {
       password: hashedPassword,
       isAdmin: false,
       image: "default_pfp.png",
-    })
+    });
 
     await user.save();
 
@@ -62,19 +62,50 @@ export const loginUser = async (req, res) => {
     const signedUrl = await getSignedUrl(user.image);
 
     // Create a JWT token
-    const token = jwt.sign({ email: user.email, id: user._id }, process.env.JWT_SECRET, { expiresIn: "1h" });
+    const token = jwt.sign(
+      { email: user.email, id: user._id },
+      process.env.JWT_SECRET,
+      { expiresIn: "1h" }
+    );
 
     const userData = {
-      user: {
-        username: user.username,
-        email: user.email,
-        image: signedUrl,
-      },
+      username: user.username,
+      email: user.email,
+      image: signedUrl,
       token,
-    }
+    };
 
     // Send the user data along with the signed URL
     res.status(200).json(userData);
+  } catch (error) {
+    console.error("Error logging in user: ", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+export const loginGoogle = async (req, res) => {
+  try {
+    const { given_name } = req.body;
+
+    const existingUser = await User.findOne({ username: given_name });
+
+    if (!existingUser) {
+      // Create a new user
+      const user = new User({
+        username: given_name,
+        isGoogle: true,
+      });
+
+      await user.save();
+    }
+
+    // Create a JWT token
+    const token = jwt.sign({ id: existingUser._id }, process.env.JWT_SECRET, {
+      expiresIn: "1h",
+    });
+
+    // Send back the token
+    res.status(200).json({ token });
   } catch (error) {
     console.error("Error logging in user: ", error);
     res.status(500).json({ message: "Internal server error" });

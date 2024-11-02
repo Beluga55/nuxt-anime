@@ -58,8 +58,9 @@ const navTextColor = computed(() => {
 
 const handleLogout = () => {
   isPopoverOpen.value = false;
-  localStorage.removeItem("loginData");
+  localStorage.removeItem("userInfo");
   localStorage.removeItem("token");
+  profilePicture.value = "";
   router.push("/");
 }
 
@@ -71,11 +72,11 @@ onMounted(() => {
   window.addEventListener("scroll", handleScroll);
 
   // Get the profile picture string from localStorage
-  const loginData = localStorage.getItem("loginData");
+  const loginData = localStorage.getItem("userInfo");
 
   if (loginData) {
     const parsedData = JSON.parse(loginData);
-    profilePicture.value = parsedData.user.image;
+    profilePicture.value = parsedData.image || parsedData.picture || "";
   }
 });
 </script>
@@ -128,6 +129,7 @@ onMounted(() => {
               :src="profilePicture"
               alt="profile picture"
               class="w-6 h-6 rounded-full"
+              referrerpolicy="no-referrer"
             />
           </PopoverTrigger>
           <PopoverContent

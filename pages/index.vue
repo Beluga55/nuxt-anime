@@ -45,7 +45,7 @@ const props = defineProps({
 const { width } = useWindowSize();
 
 const heroStyle = computed(() =>
-  width.value >= 650 ? "items-center grid-cols-2" : ""
+  width.value >= 650 ? "items-center" : ""
 );
 
 const heightScreen = computed(() =>
@@ -68,16 +68,15 @@ const trendingProducts = computed(() =>
 
     <div
       :class="[
-        props.paddingFix,
         heroStyle,
         heightScreen,
-        'bg-center relative py-36 mx-auto max-w-[1024px] grid gap-10',
+        'bg-center relative py-48',
       ]"
     >
       <!-- Your content goes here -->
-      <div class="relative">
+      <div class="relative max-w-[1024px] mx-auto mb-[5rem]" :class="props.paddingFix">
         <h1 class="text-white heading-clamp">Discover Your Anime Haven</h1>
-        <p class="mt-4 text-[14px] text-white w-fit max-w-[450px]">
+        <p class="mt-4 text-[14px] text-white max-w-[450px]">
           Explore our exclusive collection of anime poster cards, high-quality
           prints are a must-have for any anime fan. Browse now and find the
           perfect pieces to showcase your anime passion!
@@ -94,6 +93,7 @@ const trendingProducts = computed(() =>
         </div>
       </div>
       <div class="relative overflow-hidden">
+        <div class="blur-overlay"></div>
         <NuxtMarquee :speed="100" :pauseOnHover="true">
           <div v-for="(product, index) in allProducts" :key="index">
             <div class="relative">
@@ -126,6 +126,7 @@ const trendingProducts = computed(() =>
             </div>
           </div>
         </NuxtMarquee>
+        <div class="blur-overlay-end"></div>
       </div>
     </div>
   </div>
@@ -433,6 +434,37 @@ const trendingProducts = computed(() =>
 .banner-3 {
   background-image: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
     url("../assets/images/banner-3.jpg");
+}
+
+.blur-overlay,
+.blur-overlay-end {
+  position: absolute;
+  width: 100px;
+  height: 100%;
+  z-index: 10;
+  pointer-events: none;
+}
+
+.blur-overlay {
+  top: 0;
+  left: -30px;
+  background: linear-gradient(
+    to right,
+    #191919 0%,
+    rgba(25, 25, 25, 0.8) 40%,
+    transparent 100%
+  );
+}
+
+.blur-overlay-end {
+  top: 0;
+  right: -30px;
+  background: linear-gradient(
+    to right,
+    transparent 0%,
+    rgba(25, 25, 25, 0.8) 60%,
+    #191919 100%
+  );
 }
 
 @media screen and (min-width: 36rem) {

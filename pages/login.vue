@@ -16,7 +16,7 @@ import {
 import { useWindowSize } from "@vueuse/core";
 import nahida from "@/assets/images/nahida.png";
 import { useAuthStore } from "~/store/auth";
-import { useToast } from '@/components/ui/toast/use-toast'
+import { useToast } from "@/components/ui/toast/use-toast";
 
 // Get the window size
 const { width } = useWindowSize();
@@ -54,20 +54,33 @@ const handleLogin = handleSubmit(async () => {
     toast({
       variant: "destructive",
       description: error.message,
-    })
-    
+    });
+
     setTimeout(() => {
-      dismiss()
-    }, 5000)
+      dismiss();
+    }, 5000);
   }
 
   // Reset the form
   resetForm();
 });
 
-const handleOnSuccess = (response: AuthCodeFlowSuccessResponse) => {
-  // Login with google
-  console.log("Access Token: ", response.access_token);
+const handleOnSuccess = async (response: AuthCodeFlowSuccessResponse) => {
+  const userInfo = await authStore.authGoogle(response.access_token);
+
+  // Store the user info into the local storage
+  localStorage.setItem("userInfo", JSON.stringify(userInfo));
+
+  // Structure the data to be sent to the backend
+  const data = {
+    given_name: userInfo.given_name,
+  }
+
+  // Can store the user info into the database
+  await authStore.loginGoogle(data);
+
+  // Redirect to the products page
+  useRouter().push("/products");
 };
 
 const handleOnError = (errorResponse: AuthCodeFlowErrorResponse) => {
@@ -102,11 +115,15 @@ const { isReady, login } = useTokenClient({
 
           <div class="mt-5">
             <!-- Name, Email, Subject, Message -->
-            <div>
+            <div class="flex gap-2 flex-col">
+              <label for="email" class="text-sm font-medium text-left"
+                >Email</label
+              >
               <input
+                id="email"
                 type="text"
                 :placeholder="errors.email ? errors.email : 'Email'"
-                class="w-full text-black placeholder-gray-500 py-[0.65rem] px-4 text-[13px] border-[1px] border-border-color outline-none rounded-sm"
+                class="w-full text-black placeholder-gray-500 py-[0.65rem] px-4 text-[13px] border-[1px] border-border-color outline-none rounded-sm mb-3"
                 :class="{
                   'placeholder-red-700': errors.email,
                   'placeholder-gray-500': !errors.email,
@@ -114,11 +131,15 @@ const { isReady, login } = useTokenClient({
                 v-model="email"
               />
             </div>
-            <div>
+            <div class="flex gap-2 flex-col">
+              <label for="password" class="text-sm font-medium text-left"
+                >Password</label
+              >
               <input
+                id="password"
                 type="password"
                 :placeholder="errors.password ? errors.password : 'Password'"
-                class="w-full mt-3 placeholder-gray-500 py-[0.65rem] px-4 text-[13px] text-black border-[1px] border-border-color outline-none rounded-sm"
+                class="w-full mb-3 placeholder-gray-500 py-[0.65rem] px-4 text-[13px] text-black border-[1px] border-border-color outline-none rounded-sm"
                 :class="{
                   'placeholder-red-700': errors.password,
                   'placeholder-gray-500': !errors.password,

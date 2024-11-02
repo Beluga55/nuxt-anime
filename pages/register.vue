@@ -9,7 +9,7 @@ import { toTypedSchema } from "@vee-validate/zod";
 import hutao from "@/assets/images/hutao.png";
 import { useWindowSize } from "@vueuse/core";
 import { useAuthStore } from "~/store/auth";
-import { useToast } from '@/components/ui/toast/use-toast'
+import { useToast } from "@/components/ui/toast/use-toast";
 
 // Get the window size
 const { width } = useWindowSize();
@@ -49,7 +49,7 @@ const submitForm = handleSubmit(async () => {
     email: email.value,
     password: password.value,
     confirmPassword: confirmPassword.value,
-  }
+  };
 
   try {
     await authStore.signup(body);
@@ -57,11 +57,11 @@ const submitForm = handleSubmit(async () => {
     toast({
       variant: "destructive",
       description: error.message,
-    })
+    });
 
     setTimeout(() => {
-      dismiss()
-    }, 5000)
+      dismiss();
+    }, 5000);
   }
 
   resetForm();
@@ -90,11 +90,15 @@ const submitForm = handleSubmit(async () => {
 
           <div class="mt-5">
             <!-- Username, Email, Password, Confirm Password -->
-            <div>
+            <div class="flex gap-2 flex-col">
+              <label for="username" class="text-left text-sm font-medium"
+                >Username</label
+              >
               <input
+                id="username"
                 type="text"
                 :placeholder="errors.username ? errors.username : 'Username'"
-                class="w-full text-black placeholder-gray-500 py-[0.65rem] px-4 text-[13px] border-[1px] border-border-color outline-none rounded-sm"
+                class="w-full text-black placeholder-gray-500 py-[0.65rem] px-4 text-[13px] border-[1px] border-border-color outline-none rounded-sm mb-3"
                 :class="{
                   'placeholder-red-700': errors.username,
                   'placeholder-gray-500': !errors.username,
@@ -102,11 +106,15 @@ const submitForm = handleSubmit(async () => {
                 v-model="username"
               />
             </div>
-            <div>
+            <div class="flex gap-2 flex-col">
+              <label for="email" class="text-sm font-medium text-left"
+                >Email</label
+              >
               <input
+                id="email"
                 type="text"
                 :placeholder="errors.email ? errors.email : 'Email'"
-                class="w-full text-black placeholder-gray-500 py-[0.65rem] px-4 text-[13px] border-[1px] border-border-color outline-none rounded-sm mt-3"
+                class="w-full text-black placeholder-gray-500 py-[0.65rem] px-4 text-[13px] border-[1px] border-border-color outline-none rounded-sm mb-3"
                 :class="{
                   'placeholder-red-700': errors.email,
                   'placeholder-gray-500': !errors.email,
@@ -114,11 +122,15 @@ const submitForm = handleSubmit(async () => {
                 v-model="email"
               />
             </div>
-            <div>
+            <div class="flex gap-2 flex-col">
+              <label for="password" class="text-sm font-medium text-left"
+                >Password</label
+              >
               <input
+                id="password"
                 type="password"
                 :placeholder="errors.password ? errors.password : 'Password'"
-                class="w-full mt-3 placeholder-gray-500 py-[0.65rem] px-4 text-[13px] text-black border-[1px] border-border-color outline-none rounded-sm"
+                class="w-full placeholder-gray-500 py-[0.65rem] px-4 text-[13px] text-black border-[1px] border-border-color outline-none rounded-sm mb-3"
                 :class="{
                   'placeholder-red-700': errors.password,
                   'placeholder-gray-500': !errors.password,
@@ -126,15 +138,21 @@ const submitForm = handleSubmit(async () => {
                 v-model="password"
               />
             </div>
-            <div>
+            <div class="flex gap-2 flex-col">
+              <label
+                for="confirmPassword"
+                class="text-sm font-medium text-left"
+                >Confirm Password</label
+              >
               <input
+                id="confirmPassword"
                 type="password"
                 :placeholder="
                   errors.confirmPassword
                     ? errors.confirmPassword
                     : 'Confirm Password'
                 "
-                class="w-full mt-3 placeholder-gray-500 py-[0.65rem] px-4 text-[13px] text-black border-[1px] border-border-color outline-none rounded-sm"
+                class="w-full placeholder-gray-500 py-[0.65rem] px-4 text-[13px] text-black border-[1px] border-border-color outline-none rounded-sm mb-3"
                 :class="{
                   'placeholder-red-700': errors.confirmPassword,
                   'placeholder-gray-500': !errors.confirmPassword,
