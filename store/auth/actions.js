@@ -9,7 +9,7 @@ export default {
 
     // Set the token in the local storage
     localStorage.setItem("token", login.token);
-    
+
     // Set the user data into the store
     this.loginData = login;
     localStorage.setItem("userInfo", JSON.stringify(this.loginData));
@@ -35,6 +35,9 @@ export default {
     // Set the token in the local storage
     localStorage.setItem("token", loginGoogle.token);
 
+    // Redirect to the products page
+    useRouter().push("/products");
+
     return loginGoogle;
   },
   async signup(data) {
@@ -47,5 +50,5 @@ export default {
 
     // Return the signup response
     return signup;
-  }
+  },
 };

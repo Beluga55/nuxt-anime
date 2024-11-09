@@ -74,13 +74,11 @@ const handleOnSuccess = async (response: AuthCodeFlowSuccessResponse) => {
   // Structure the data to be sent to the backend
   const data = {
     given_name: userInfo.given_name,
+    email: userInfo.email,
   }
 
   // Can store the user info into the database
   await authStore.loginGoogle(data);
-
-  // Redirect to the products page
-  useRouter().push("/products");
 };
 
 const handleOnError = (errorResponse: AuthCodeFlowErrorResponse) => {
@@ -115,7 +113,7 @@ const { isReady, login } = useTokenClient({
 
           <div class="mt-5">
             <!-- Name, Email, Subject, Message -->
-            <div class="flex gap-2 flex-col">
+            <div class="flex flex-col gap-2">
               <label for="email" class="text-sm font-medium text-left"
                 >Email</label
               >
@@ -131,7 +129,7 @@ const { isReady, login } = useTokenClient({
                 v-model="email"
               />
             </div>
-            <div class="flex gap-2 flex-col">
+            <div class="flex flex-col gap-2">
               <label for="password" class="text-sm font-medium text-left"
                 >Password</label
               >
