@@ -31,8 +31,8 @@ const emit = defineEmits(["categorySelected"]);
 const emitCategory = (category: string) => {
   navigateTo({
     path: "/products",
-    query: { category }
-  })
+    query: { category },
+  });
 };
 
 const props = defineProps({
@@ -44,12 +44,10 @@ const props = defineProps({
 
 const { width } = useWindowSize();
 
-const heroStyle = computed(() =>
-  width.value >= 650 ? "items-center" : ""
-);
+const heroStyle = computed(() => (width.value >= 650 ? "items-center" : ""));
 
 const heightScreen = computed(() =>
-  width.value >= 650 ? "h-screen" : "h-auto"
+  width.value >= 650 ? "min-h-screen" : "h-auto"
 );
 
 const allProducts = computed(() => productsStore.products?.data);
@@ -66,15 +64,12 @@ const trendingProducts = computed(() =>
   >
     <div class="absolute inset-0 bg-black/75"></div>
 
-    <div
-      :class="[
-        heroStyle,
-        heightScreen,
-        'bg-center relative py-48',
-      ]"
-    >
+    <div :class="[heroStyle, heightScreen, 'bg-center relative py-48']">
       <!-- Your content goes here -->
-      <div class="relative max-w-[1024px] mx-auto mb-[5rem]" :class="props.paddingFix">
+      <div
+        class="relative max-w-[1024px] mx-auto mb-[5rem]"
+        :class="props.paddingFix"
+      >
         <h1 class="text-white heading-clamp">Discover Your Anime Haven</h1>
         <p class="mt-4 text-[14px] text-white max-w-[450px]">
           Explore our exclusive collection of anime poster cards, high-quality
@@ -161,7 +156,8 @@ const trendingProducts = computed(() =>
       >
         <swiper-slide v-for="(product, index) in trendingProducts" :key="index">
           <div
-            class="trending-items border-[1px] border-solid border-zinc-400 px-4 py-4 rounded-[8px] grid"
+            class="trending-items border-[1px] border-solid border-zinc-400 px-4 py-4 rounded-[8px] grid hover:cursor-pointer"
+            @click="router.push(`/product/${product._id}`)"
           >
             <img
               :src="product.imageUrl"

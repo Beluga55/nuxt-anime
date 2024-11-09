@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useProductsStore } from "~/store/products/index.js";
 import { Progress } from "@/components/ui/progress";
-import { useRoute } from "vue-router";
+import { useRoute, useRouter } from "vue-router";
 
 type Checked = DropdownMenuCheckboxItemProps["checked"];
 
@@ -45,6 +45,7 @@ const totalItems = ref(0);
 const isLoading = ref(false);
 const progress = ref(15);
 const route = useRoute();
+const router = useRouter();
 
 const displayItems = computed(() => {
   totalItems.value = productsStore.products?.data.length;
@@ -266,9 +267,10 @@ onMounted(() => {
       class="grid items-stretch gap-4"
     >
       <div
-        class="grid border-[1px] rounded-[8px] border-border-color px-4 py-4"
+        class="grid border-[1px] rounded-[8px] border-border-color px-4 py-4 cursor-pointer"
         v-for="(product, index) in sortedProducts?.slice(0, currentItems)"
         :key="index"
+        @click="router.push(`/product/${product._id}`)"
       >
         <img
           :src="product.imageUrl"

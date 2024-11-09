@@ -29,5 +29,13 @@ export const getProducts = async (req, res) => {
 
 export const getProductById = async (req, res) => {
   const product = await Product.findById(req.params.id);
+
+  // Get the image URL from the product image property
+  const imageUrl = await getProductsImage(product.image);
+
+  // Add the image URL to the product object
+  product.image = imageUrl;
+
+  // Return the product with the image URL
   res.status(200).json(product);
 };

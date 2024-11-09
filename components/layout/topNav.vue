@@ -4,10 +4,12 @@ import {
   UserCircleIcon,
   Bars3BottomRightIcon,
   ShoppingBagIcon,
+  MagnifyingGlassIcon,
 } from "@heroicons/vue/24/outline";
 import Input from "@/components/ui/input/Input.vue";
 import { useProductsStore } from "@/store/products/index.js";
 import { useRoute, useRouter } from "vue-router";
+import { useWindowSize } from "@vueuse/core";
 
 import {
   Popover,
@@ -30,11 +32,13 @@ const navItems = [
 const productsStore = useProductsStore();
 const route = useRoute();
 const router = useRouter();
+const { width } = useWindowSize();
 const searchInput = ref("");
 const sidebarValue = ref(false);
 const scrollHeader = ref("");
 const scrollY = ref(0);
 const isPopoverOpen = ref(false);
+const isSearchOpen = ref(false);
 const profilePicture = ref("");
 
 const toggleSidebar = () => (sidebarValue.value = !sidebarValue.value);
@@ -62,7 +66,7 @@ const handleLogout = () => {
   localStorage.removeItem("token");
   profilePicture.value = "";
   router.push("/");
-}
+};
 
 onMounted(() => {
   const handleScroll = () => {
@@ -84,7 +88,7 @@ onMounted(() => {
 <template>
   <header
     :class="[sidebarValue ? 'bg-white' : 'bg-transparent', scrollHeader]"
-    class="fixed top-0 z-10 w-full transition-all duration-300 shadow"
+    class="fixed top-0 z-[20] w-full transition-all duration-300 shadow"
   >
     <nav
       :class="[
@@ -110,6 +114,48 @@ onMounted(() => {
       </nav>
 
       <div class="flex items-center gap-2">
+        <Popover :open="isSearchOpen" v-if="props.isDesktop">
+          <PopoverTrigger @click="isSearchOpen = !isSearchOpen">
+            <MagnifyingGlassIcon class="size-5 cursor-pointer" />
+          </PopoverTrigger>
+          <PopoverContent
+            class="mt-2 bg-transparent outline-none px-0 py-0 border-none grid shadow-none"
+          >
+            <Input
+              v-model="searchInput"
+              class="text-[13px] duration-300 w-[250px] border-2 outline-none transition-border justify-self-center"
+              placeholder="Search for products..."
+            />
+
+            <div
+              v-if="searchInput !== ''"
+              class="bg-background-color mt-4 px-4 py-4 rounded-[8px] border-2 justify-self-center w-[250px]"
+            >
+              <p class="text-sm mb-2 font-medium">Search Results</p>
+
+              <hr />
+
+              <div
+                class="mt-4 flex flex-col gap-2 max-h-[155px] overflow-y-auto"
+              >
+                <div v-for="product in filteredProducts" :key="product.id">
+                  <p
+                    @click="
+                      () => {
+                        isSearchOpen = false;
+                        router.push(`/product/${product._id}`);
+                      }
+                    "
+                    class="text-[13px] cursor-pointer"
+                  >
+                    {{ product.name }}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </PopoverContent>
+        </Popover>
+
         <ShoppingBagIcon
           @click="router.push('/products')"
           class="cursor-pointer size-5"
@@ -213,7 +259,17 @@ onMounted(() => {
           <hr />
           <div class="mt-4 flex flex-col gap-3 max-h-[155px] overflow-y-auto">
             <div v-for="product in filteredProducts" :key="product.id">
-              <p class="text-xs">{{ product.name }}</p>
+              <p
+                @click="
+                  () => {
+                    closeSidebar();
+                    router.push(`/product/${product._id}`);
+                  }
+                "
+                class="text-xs cursor-pointer"
+              >
+                {{ product.name }}
+              </p>
             </div>
           </div>
         </div>
