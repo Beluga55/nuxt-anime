@@ -1,28 +1,26 @@
 import { type VariantProps, cva } from 'class-variance-authority'
+import { twMerge } from 'tailwind-merge'
 
 export { default as Button } from './Button.vue'
 
 export const buttonVariants = cva(
-  'inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50',
+  twMerge('inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50'),
   {
     variants: {
       variant: {
-        default: 'bg-primary text-primary-foreground hover:bg-primary/90',
-        destructive:
-          'bg-destructive text-destructive-foreground hover:bg-destructive/90',
-        outline:
-          'border border-input bg-background hover:bg-accent hover:text-accent-foreground',
-        secondary:
-          'bg-secondary text-secondary-foreground hover:bg-secondary/80',
-        ghost: 'hover:bg-accent hover:text-accent-foreground',
-        link: 'text-primary underline-offset-4 hover:underline',
+        default: twMerge('bg-primary text-primary-foreground hover:bg-primary/90'),
+        destructive: twMerge('bg-destructive text-destructive-foreground hover:bg-destructive/90'),
+        outline: twMerge('border border-input bg-background hover:bg-accent hover:text-accent-foreground'),
+        secondary: twMerge('bg-secondary text-secondary-foreground hover:bg-secondary/80'),
+        ghost: twMerge('hover:bg-accent hover:text-accent-foreground'),
+        link: twMerge('text-primary underline-offset-4 hover:underline'),
       },
       size: {
-        default: 'h-10 px-4 py-2',
-        xs: 'h-7 rounded px-2',
-        sm: 'h-9 rounded-md px-3',
-        lg: 'h-11 rounded-md px-8',
-        icon: 'h-10 w-10',
+        default: twMerge('h-10 px-4 py-2'),
+        xs: twMerge('h-7 rounded px-2'),
+        sm: twMerge('h-9 rounded-md px-3'),
+        lg: twMerge('h-11 rounded-md px-8'),
+        icon: twMerge('h-10 w-10'),
       },
     },
     defaultVariants: {

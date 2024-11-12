@@ -29,7 +29,7 @@
     "radix-vue": "^1.9.5",
     "shadcn-nuxt": "^0.10.4",
     "swiper": "^6.8.4",
-    "tailwind-merge": "^2.5.2",
+    "tailwind-merge": "^2.5.4",
     "tailwindcss-animate": "^1.0.7",
     "vue": "latest",
     "vue-router": "latest",

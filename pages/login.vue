@@ -53,7 +53,7 @@ const handleLogin = handleSubmit(async () => {
   } catch (error) {
     toast({
       variant: "destructive",
-      description: error.message,
+      description: (error as Error).message,
     });
 
     setTimeout(() => {

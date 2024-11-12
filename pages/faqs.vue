@@ -35,7 +35,7 @@ const { handleSubmit, errors, resetForm } = useForm({
 const { value: name } = useField("name");
 const { value: email } = useField("email");
 const { value: subject } = useField("subject");
-const { value: message } = useField("message");
+const { value: message } = useField<string>("message");
 
 definePageMeta({
   layout: "nav-layout",
