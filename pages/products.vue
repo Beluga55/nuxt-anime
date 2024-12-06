@@ -16,16 +16,28 @@ import {
 import { useProductsStore } from "~/store/products/index.js";
 import { Progress } from "@/components/ui/progress";
 import { useRoute, useRouter } from "vue-router";
+import { useThrottleFn } from "@vueuse/core";
+
+interface Product {
+  _id: string;
+  name: string;
+  price: number;
+  rating: number;
+  category: string;
+  imageUrl: string;
+  numReviews: number;
+}
+
+interface FilterState {
+  categories: Record<string, boolean>;
+  sort: {
+    az: boolean;
+    lowPrice: boolean;
+    rating: boolean;
+  };
+}
 
 type Checked = DropdownMenuCheckboxItemProps["checked"];
-
-const showAZ = ref<Checked>(false);
-const showLowPrice = ref<Checked>(false);
-const showKeychains = ref<Checked>(false);
-const showPostCards = ref<Checked>(false);
-const showBadges = ref<Checked>(false);
-const showPrints = ref<Checked>(false);
-const showRating = ref<Checked>(true);
 
 definePageMeta({
   layout: "nav-layout",
@@ -38,6 +50,71 @@ const props = defineProps({
   },
 });
 
+// Create a composable for product filtering and sorting
+const useProductFiltering = () => {
+  const filterState = reactive<FilterState>({
+    categories: {
+      Keychains: false,
+      'Post Cards': false,
+      Badges: false,
+      Prints: false
+    },
+    sort: {
+      az: false,
+      lowPrice: false,
+      rating: true
+    }
+  });
+
+  const productsStore = useProductsStore();
+
+  const hasActiveCategories = computed(() => 
+    Object.values(filterState.categories).some(Boolean)
+  );
+
+  const filteredProducts = computed(() => {
+    const products = productsStore.products?.data || [];
+    
+    if (!hasActiveCategories.value) {
+      return products;
+    }
+
+    return products.filter(product => 
+      filterState.categories[product.category as keyof typeof filterState.categories]
+    );
+  });
+
+  const sortedProducts = computed(() => {
+    if (!filteredProducts.value.length) return [];
+
+    const products = [...filteredProducts.value];
+    
+    return products.sort((a, b) => {
+      if (filterState.sort.az) {
+        const nameCompare = a.name.localeCompare(b.name);
+        if (nameCompare !== 0) return nameCompare;
+      }
+      
+      if (filterState.sort.lowPrice) {
+        const priceCompare = a.price - b.price;
+        if (priceCompare !== 0) return priceCompare;
+      }
+      
+      if (filterState.sort.rating) {
+        return b.rating - a.rating;
+      }
+      
+      return 0;
+    });
+  });
+
+  return {
+    filterState,
+    sortedProducts,
+    hasActiveCategories
+  };
+};
+
 const { width } = useWindowSize();
 const productsStore = useProductsStore();
 const currentItems = ref(8);
@@ -47,94 +124,86 @@ const progress = ref(15);
 const route = useRoute();
 const router = useRouter();
 
-const displayItems = computed(() => {
-  totalItems.value = productsStore.products?.data.length;
-  return `Showing ${currentItems?.value} out of ${totalItems?.value} products`;
+const { filterState, sortedProducts, hasActiveCategories } = useProductFiltering();
+
+// Computed properties for checkbox bindings
+const showKeychains = computed({
+  get: () => filterState.categories.Keychains,
+  set: (value) => filterState.categories.Keychains = value
 });
 
-const sortedProducts = computed(() =>
-  productsStore.products?.data
-    .filter(
-      (product) =>
-        (!showKeychains.value &&
-          !showPostCards.value &&
-          !showBadges.value &&
-          !showPrints.value) ||
-        (showKeychains.value && product.category === "Keychains") ||
-        (showPostCards.value && product.category === "Post Cards") ||
-        (showBadges.value && product.category === "Badges") ||
-        (showPrints.value && product.category === "Prints")
-    )
-    .sort((a, b) => {
-      // Merge sorting conditions
-      const nameSort = showAZ.value ? a.name.localeCompare(b.name) : 0;
-      const priceSort = showLowPrice.value ? a.price - b.price : 0;
-      const ratingSort = showRating.value ? b.rating - a.rating : 0;
-      return nameSort || priceSort || ratingSort;
-    })
-);
+const showPostCards = computed({
+  get: () => filterState.categories['Post Cards'],
+  set: (value) => filterState.categories['Post Cards'] = value
+});
+
+const showBadges = computed({
+  get: () => filterState.categories.Badges,
+  set: (value) => filterState.categories.Badges = value
+});
+
+const showPrints = computed({
+  get: () => filterState.categories.Prints,
+  set: (value) => filterState.categories.Prints = value
+});
+
+const showAZ = computed({
+  get: () => filterState.sort.az,
+  set: (value) => filterState.sort.az = value
+});
+
+const showLowPrice = computed({
+  get: () => filterState.sort.lowPrice,
+  set: (value) => filterState.sort.lowPrice = value
+});
+
+const showRating = computed({
+  get: () => filterState.sort.rating,
+  set: (value) => filterState.sort.rating = value
+});
+
+const displayItems = computed(() => {
+  totalItems.value = sortedProducts.value.length;
+  return `Showing ${currentItems.value} out of ${totalItems.value} products`;
+});
 
 const changeCurrentValue = () => {
-  currentItems.value = sortedProducts?.value?.length;
+  currentItems.value = sortedProducts.value.length;
 };
 
-const handleScroll = async () => {
-  if (window.innerHeight + window.scrollY >= document.body.offsetHeight) {
-    if (currentItems.value >= totalItems.value || hasReachedCategoryLimit()) {
-      return;
-    }
+// Optimize loading logic
+const loadMoreThreshold = 200; // pixels from bottom
+const canLoadMore = computed(() => {
+  const activeCategory = Object.entries(filterState.categories)
+    .find(([_, isActive]) => isActive)?.[0];
+    
+  if (!activeCategory) {
+    return currentItems.value < totalItems.value;
+  }
+  
+  const categoryProducts = productsStore.products?.data
+    .filter(product => product.category === activeCategory);
+    
+  return currentItems.value < (categoryProducts?.length || 0);
+});
+
+const handleScroll = useThrottleFn(() => {
+  const scrollPosition = window.innerHeight + window.scrollY;
+  const documentHeight = document.body.offsetHeight;
+  
+  if (scrollPosition >= documentHeight - loadMoreThreshold && canLoadMore.value && !isLoading.value) {
     isLoading.value = true;
     currentItems.value += 4;
-    isLoading.value = false;
+    nextTick(() => {
+      isLoading.value = false;
+    });
   }
-};
-
-const hasReachedCategoryLimit = () => {
-  if (showKeychains.value) {
-    return (
-      currentItems.value >=
-      productsStore.products?.data.filter(
-        (product) => product.category === "Keychains"
-      ).length
-    );
-  }
-  if (showPostCards.value) {
-    return (
-      currentItems.value >=
-      productsStore.products?.data.filter(
-        (product) => product.category === "Post Cards"
-      ).length
-    );
-  }
-  if (showBadges.value) {
-    return (
-      currentItems.value >=
-      productsStore.products?.data.filter(
-        (product) => product.category === "Badges"
-      ).length
-    );
-  }
-  if (showPrints.value) {
-    return (
-      currentItems.value >=
-      productsStore.products?.data.filter(
-        (product) => product.category === "Prints"
-      ).length
-    );
-  }
-  return false;
-};
+}, 100);
 
 watchEffect((fn) => {
   const timer = setTimeout(() => (progress.value = 70), 500);
 
-  // If no category is selected, dont execute the changeCurrentValue function
-  if (
-    showKeychains.value === false &&
-    showPostCards.value === false &&
-    showBadges.value === false &&
-    showPrints.value === false
-  ) {
+  if (!hasActiveCategories.value) {
     return clearTimeout(timer);
   }
 
@@ -146,13 +215,24 @@ onMounted(() => {
   const category = route.query.category as string;
 
   if (category) {
-    showKeychains.value = category === "Keychains";
-    showPostCards.value = category === "Postcards";
-    showBadges.value = category === "Badges";
-    showPrints.value = category === "Prints";
+    const categoryMap: Record<string, keyof typeof filterState.categories> = {
+      'Keychains': 'Keychains',
+      'Postcards': 'Post Cards',
+      'Badges': 'Badges',
+      'Prints': 'Prints'
+    };
+    
+    const mappedCategory = categoryMap[category];
+    if (mappedCategory) {
+      filterState.categories[mappedCategory] = true;
+    }
   }
 
   window.addEventListener("scroll", handleScroll);
+});
+
+onUnmounted(() => {
+  window.removeEventListener("scroll", handleScroll);
 });
 </script>
 
@@ -175,11 +255,7 @@ onMounted(() => {
   </div>
 
   <div
-    :class="[
-      props.paddingFix,
-      'mt-10 max-w-[1024px] mx-auto',
-      width >= 450 ? 'flex justify-between' : '',
-    ]"
+    :class="[props.paddingFix, 'mt-10 max-w-[1024px] mx-auto', width >= 450 ? 'flex justify-between' : '']"
   >
     <div class="grid gap-2 mb-5">
       <p class="text-base font-medium header-font">
@@ -259,11 +335,7 @@ onMounted(() => {
   <!-- Fetch 8 items first -> scroll loading more items (8) -> update the quantity of the h2 -> if finish product then display a empty state (no more products)-->
   <div class="py-8 max-w-[1024px] mx-auto" :class="props.paddingFix">
     <div
-      :class="[
-        width >= 420 && 'grid-cols-2',
-        width >= 650 && 'grid-cols-3',
-        width >= 900 && 'grid-cols-4',
-      ]"
+      :class="[width >= 420 && 'grid-cols-2', width >= 650 && 'grid-cols-3', width >= 900 && 'grid-cols-4']"
       class="grid items-stretch gap-4"
     >
       <div

@@ -5,11 +5,13 @@ import {
   Bars3BottomRightIcon,
   ShoppingBagIcon,
   MagnifyingGlassIcon,
+  XMarkIcon,
 } from "@heroicons/vue/24/outline";
 import Input from "@/components/ui/input/Input.vue";
 import { useProductsStore } from "@/store/products/index.js";
 import { useRoute, useRouter } from "vue-router";
 import { useWindowSize } from "@vueuse/core";
+import { useCartStore } from "@/store/cart";
 
 import {
   Popover,
@@ -30,6 +32,7 @@ const navItems = [
 ];
 
 const productsStore = useProductsStore();
+const cartStore = useCartStore();
 const route = useRoute();
 const router = useRouter();
 const { width } = useWindowSize();
@@ -39,6 +42,7 @@ const scrollHeader = ref("");
 const scrollY = ref(0);
 const isPopoverOpen = ref(false);
 const isSearchOpen = ref(false);
+const isCartOpen = ref(false);
 const profilePicture = ref("");
 
 const toggleSidebar = () => (sidebarValue.value = !sidebarValue.value);
@@ -82,6 +86,8 @@ onMounted(() => {
     const parsedData = JSON.parse(loginData);
     profilePicture.value = parsedData.image || parsedData.picture || "";
   }
+
+  cartStore.loadCart();
 });
 </script>
 
@@ -156,10 +162,94 @@ onMounted(() => {
           </PopoverContent>
         </Popover>
 
-        <ShoppingBagIcon
-          @click="router.push('/products')"
-          class="cursor-pointer size-5"
-        />
+        <Popover :open="isCartOpen">
+          <PopoverTrigger @click="isCartOpen = !isCartOpen" asChild>
+            <ShoppingBagIcon class="cursor-pointer size-5" />
+          </PopoverTrigger>
+          <PopoverContent
+            class="w-full min-w-[200px] mt-2 bg-background-color p-4 rounded-[8px] border-2"
+          >
+            <p class="text-sm font-medium mb-2">
+              Cart Items ({{ cartStore.totalItems }})
+            </p>
+            <hr class="my-2" />
+            <div class="flex flex-col gap-2">
+              <!-- Empty State -->
+              <div
+                v-if="cartStore.totalItems === 0"
+                class="flex flex-col items-center gap-4 my-3"
+              >
+                <p class="text-sm font-medium">Cart is empty</p>
+                <Button
+                  variant="default"
+                  class="w-full text-sm outline-none border-none"
+                  @click="
+                    () => {
+                      router.push('/products');
+                      isCartOpen = false;
+                    }
+                  "
+                >
+                  Browse Products
+                </Button>
+              </div>
+              <!-- Cart Items -->
+              <div class="cart-items-list max-h-[300px] overflow-y-auto pr-2">
+                <div
+                  v-for="item in cartStore.cartItems"
+                  :key="item.id"
+                  class="flex items-start gap-5 py-2"
+                >
+                  <img
+                    :src="item.image"
+                    :alt="item.name"
+                    class="w-16 h-16 object-cover rounded"
+                  />
+                  <div class="flex-1 gap-0.5 flex flex-col">
+                    <p class="text-sm font-medium">{{ item.name }}</p>
+                    <p class="text-xs text-gray-500">
+                      Qty: {{ item.quantity }}
+                    </p>
+                    <p class="text-sm font-medium">
+                      RM {{ (item.price * item.quantity).toFixed(2) }}
+                    </p>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    class="p-0 h-5 bg-transparent hover:bg-transparent hover:text-destructive"
+                    @click="cartStore.removeFromCart(item.id)"
+                  >
+                    <!-- Cancel Icon -->
+                    <XMarkIcon class="size-4" />
+                  </Button>
+                </div>
+                <hr v-if="cartStore.cartItems.length > 0" class="my-2" />
+                <div
+                  v-if="cartStore.cartItems.length > 0"
+                  class="flex justify-between items-center mt-2"
+                >
+                  <p class="text-sm font-medium">Total:</p>
+                  <p class="text-sm font-bold">
+                    RM {{ cartStore.totalAmount.toFixed(2) }}
+                  </p>
+                </div>
+                <Button
+                  v-if="cartStore.cartItems.length > 0"
+                  variant="default"
+                  class="w-full mt-4"
+                  @click="
+                    () => {
+                      router.push('/checkout');
+                      isCartOpen = false;
+                    }
+                  "
+                >
+                  Checkout
+                </Button>
+              </div>
+            </div>
+          </PopoverContent>
+        </Popover>
 
         <Popover :open="isPopoverOpen" class="relative z-10">
           <PopoverTrigger
@@ -261,10 +351,8 @@ onMounted(() => {
             <div v-for="product in filteredProducts" :key="product.id">
               <p
                 @click="
-                  () => {
-                    closeSidebar();
-                    router.push(`/product/${product._id}`);
-                  }
+                  closeSidebar();
+                  router.push(`/product/${product._id}`);
                 "
                 class="text-xs cursor-pointer"
               >
@@ -278,6 +366,30 @@ onMounted(() => {
   </header>
 </template>
 
-<style scoped></style>
+<style scoped>
+:global(div[data-radix-popper-content-wrapper]) {
+  left: -1rem !important;
+}
+
+@media screen and (width >= 1024px) {
+  :global(div[data-radix-popper-content-wrapper]) {
+    left: 0 !important;
+  }
+}
+
+.cart-items-list::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+
+.cart-items-list::-webkit-scrollbar-track {
+  background-color: transparent;
+}
+
+.cart-items-list::-webkit-scrollbar-thumb {
+  background-color: grey;
+  border-radius: 8px;
+}
+</style>
 
 <!-- env -> api_wrapper -> api -> plugins -> actions.js -> backend -> states.js PINIA -->

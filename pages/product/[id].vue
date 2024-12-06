@@ -13,12 +13,17 @@ import {
   NumberFieldIncrement,
   NumberFieldInput,
 } from "@/components/ui/number-field";
+import { useCartStore } from "@/store/cart";
+import { useToast } from "@/components/ui/toast/use-toast";
 
 const productsStore = useProductsStore();
 const route = useRoute();
 const router = useRouter();
+const cartStore = useCartStore();
+const { toast, dismiss } = useToast();
 
 const selectedProduct = ref(null);
+const quantity = ref(1);
 
 definePageMeta({
   layout: "nav-layout",
@@ -31,13 +36,30 @@ const props = defineProps({
   },
 });
 
+const addToCart = () => {
+  try {
+    cartStore.addToCart(selectedProduct.value, quantity.value);
+    toast({
+      title: "Added to cart",
+      description: `${quantity.value} x ${selectedProduct.value.name} added to cart`,
+    });
+  } catch (error) {
+    toast({
+      variant: "destructive",
+      title: "Cannot add to cart",
+      description: error.message,
+    });
+  }
+};
+
 onMounted(async () => {
   selectedProduct.value = await productsStore.showProduct(route.params.id);
 });
 </script>
 
 <template>
-  <div class="mt-[9rem] grid gap-5 max-w-[1024px] mx-auto justify-center" :class="props.paddingFix">
+  <Toaster />
+  <div class="mt-[9rem] grid gap-5 max-w-[1024px] mx-auto justify-center sm:grid-cols-2 sm:items-center" :class="props.paddingFix">
     <div>
       <div class="flex items-center gap-2">
         <ArrowLeftIcon class="text-black size-4 arrow-left" />
@@ -46,7 +68,7 @@ onMounted(async () => {
       <img
         :src="selectedProduct?.image"
         alt="product"
-        class="w-full max-w-[350px] h-[325px] object-cover object-right mt-5 rounded-2xl"
+        class="w-full max-w-[350px] h-[325px] object-cover object-right mt-5 rounded-2xl md:max-w-[450px] md:h-[400px]"
       />
     </div>
 
@@ -91,7 +113,12 @@ onMounted(async () => {
       <hr class="border-[1px] border-[rgba(0,0,0,0.2)] rounded-[4px]" />
 
       <div class="flex items-center gap-2 mt-7">
-        <NumberField :default-value="1" :min="0">
+        <NumberField 
+          v-model="quantity" 
+          :min="1" 
+          :max="selectedProduct?.stock"
+          :disabled="!selectedProduct?.stock"
+        >
           <NumberFieldContent>
             <NumberFieldDecrement />
             <NumberFieldInput />
@@ -99,7 +126,14 @@ onMounted(async () => {
           </NumberFieldContent>
         </NumberField>
 
-        <Button variant="default" class="w-full h-[40px] py-0 text-xs">Add To Cart</Button>
+        <Button 
+          variant="default" 
+          class="w-full h-[40px] py-0 text-xs" 
+          @click="addToCart"
+          :disabled="!selectedProduct?.stock"
+        >
+          {{ selectedProduct?.stock ? 'Add To Cart' : 'Out of Stock' }}
+        </Button>
       </div>
     </div>
   </div>

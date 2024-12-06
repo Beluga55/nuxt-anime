@@ -67,11 +67,11 @@ const trendingProducts = computed(() =>
     <div :class="[heroStyle, heightScreen, 'bg-center relative py-48']">
       <!-- Your content goes here -->
       <div
-        class="relative max-w-[1024px] mx-auto mb-[5rem]"
+        class="relative max-w-[1024px] mx-auto mb-[5rem] flex flex-col justify-center items-center text-center"
         :class="props.paddingFix"
       >
         <h1 class="text-white heading-clamp">Discover Your Anime Haven</h1>
-        <p class="mt-4 text-[14px] text-white max-w-[450px]">
+        <p class="mt-4 text-sm md:text-base text-white max-w-[600px] md:leading-relaxed leading-relaxed">
           Explore our exclusive collection of anime poster cards, high-quality
           prints are a must-have for any anime fan. Browse now and find the
           perfect pieces to showcase your anime passion!
@@ -80,7 +80,7 @@ const trendingProducts = computed(() =>
           <Button
             @click="router.push('/products')"
             variant="outline"
-            class="text-xs"
+            class="text-xs min-w-[200px]"
           >
             <ShoppingBagIcon class="mr-2 size-4" />
             Shop Now
@@ -96,7 +96,7 @@ const trendingProducts = computed(() =>
                 @click="router.push(`/product/${product._id}`)"
                 :src="product.imageUrl"
                 alt="product"
-                class="object-cover w-[325px] h-[350px] rounded-[1rem] border-2 object-top-center border-zinc-700 cursor-pointer"
+                class="object-cover w-[325px] h-[300px] rounded-[1rem] border-2 object-top-center border-zinc-700 cursor-pointer"
               />
               <div
                 class="absolute bottom-0 left-0 right-0 px-5 py-3 mx-[1px] backdrop-text"

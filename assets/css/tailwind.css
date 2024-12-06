@@ -75,4 +75,15 @@
   body {
     @apply bg-background text-foreground;
   }
+  html {
+    @apply select-none cursor-default;
+    scroll-behavior: smooth;
+  }
+  
+  /* Re-enable selection for inputs and other text elements */
+  input, 
+  textarea, 
+  [contenteditable] {
+    @apply select-text cursor-text;
+  }
 }
