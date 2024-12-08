@@ -239,7 +239,7 @@ const trendingProducts = computed(() =>
         @click="isActive = isActive === 'banner-1' ? null : 'banner-1'"
       >
         <div class="banner-content-description">
-          <h2 class="text-[14px] text-text-color-light font-medium">
+          <h2 class="text-[14px] text-text-color-light font-medium font-jakarta">
             Promotions
           </h2>
           <div
@@ -259,7 +259,7 @@ const trendingProducts = computed(() =>
         @click="isActive = isActive === 'banner-2' ? null : 'banner-2'"
       >
         <div class="banner-content-description">
-          <h2 class="text-[14px] text-text-color-light font-medium">
+          <h2 class="text-[14px] text-text-color-light font-medium font-jakarta">
             New Arrival
           </h2>
           <div
@@ -279,7 +279,7 @@ const trendingProducts = computed(() =>
         @click="isActive = isActive === 'banner-3' ? null : 'banner-3'"
       >
         <div class="banner-content-description">
-          <h2 class="text-[14px] text-text-color-light font-medium">
+          <h2 class="text-[14px] text-text-color-light font-medium font-jakarta">
             Pre Order
           </h2>
           <div
@@ -398,10 +398,6 @@ const trendingProducts = computed(() =>
   bottom: 15px;
   left: 15px;
   width: calc(100% - 30px);
-}
-
-.banner-content h2 {
-  font-family: "Plus Jakarta Sans", sans-serif;
 }
 
 .banner-content:not(.active) h2 {

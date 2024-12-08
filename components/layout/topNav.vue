@@ -12,12 +12,16 @@ import { useProductsStore } from "@/store/products/index.js";
 import { useRoute, useRouter } from "vue-router";
 import { useWindowSize } from "@vueuse/core";
 import { useCartStore } from "@/store/cart";
+import { loadStripe } from "@stripe/stripe-js";
+import { usePaymentStore } from "~/store/payment";
 
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+
+const paymentStore = usePaymentStore();
 
 const props = defineProps({
   isDesktop: Boolean,
@@ -70,6 +74,46 @@ const handleLogout = () => {
   localStorage.removeItem("token");
   profilePicture.value = "";
   router.push("/");
+};
+
+const handleCheckout = async () => {
+  try {
+    // Transform cart items to Stripe format
+    const items = cartStore.cartItems.map((item) => ({
+      name: item.name,
+      amount: Math.round(item.price * 100), // Convert to cents
+      quantity: item.quantity || 1,
+      image: item.imageUrl || item.image, // Add fallback to item.image
+      description: item.description, // Optional: include description if available
+    }));
+
+    // Debug cart items
+    console.log('Cart Items:', cartStore.cartItems);
+    console.log('Transformed Items:', items);
+
+    // Validate items have images
+    const missingImages = items.filter((item) => !item.image);
+    if (missingImages.length > 0) {
+      console.warn(
+        "Some items are missing images:",
+        missingImages.map((item) => item.name)
+      );
+    }
+
+    const response = await paymentStore.createCheckoutSession({
+      items,
+    });
+
+    if (response && response.session) {
+      const config = useRuntimeConfig();
+      const stripe = await loadStripe(config.public.stripePublishableKey);
+      await stripe.redirectToCheckout({
+        sessionId: response.session.id,
+      });
+    }
+  } catch (err) {
+    console.error("Error:", err);
+  }
 };
 
 onMounted(() => {
@@ -164,7 +208,9 @@ onMounted(() => {
 
         <Popover :open="isCartOpen">
           <PopoverTrigger @click="isCartOpen = !isCartOpen" asChild>
-            <div class="relative flex items-center justify-center py-1 rounded-full">
+            <div
+              class="relative flex items-center justify-center py-1 rounded-full"
+            >
               <ShoppingBagIcon class="cursor-pointer size-5" />
               <div
                 class="absolute -top-2 -right-2 text-xs font-medium rounded-full bg-primary-color text-white w-4 h-4 flex items-center justify-center"
@@ -246,12 +292,7 @@ onMounted(() => {
                   v-if="cartStore.cartItems.length > 0"
                   variant="default"
                   class="w-full mt-4"
-                  @click="
-                    () => {
-                      router.push('/checkout');
-                      isCartOpen = false;
-                    }
-                  "
+                  @click="handleCheckout"
                 >
                   Checkout
                 </Button>

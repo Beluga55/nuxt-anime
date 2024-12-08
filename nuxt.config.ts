@@ -13,7 +13,8 @@ export default defineNuxtConfig({
   ],
   runtimeConfig: {
     public: {
-      apiUrl: process.env.API_URL
+      apiUrl: process.env.API_URL,
+      stripePublishableKey: process.env.STRIPE_PUBLISHABLE_KEY
     }
   },
   plugins: [

@@ -18,7 +18,6 @@ export default async (func) => {
         console.log(err);
       });
     }
-
     return [null, error];
   }
 };

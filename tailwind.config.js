@@ -15,6 +15,9 @@ module.exports = {
       },
     },
     extend: {
+      fontFamily: {
+        jakarta: ['Plus Jakarta Sans', 'sans-serif'],
+      },
       colors: { 
         "primary-color": "#fd7968",
         "secondary-color": "#FADCD9",

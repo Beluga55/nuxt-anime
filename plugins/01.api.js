@@ -2,6 +2,7 @@ import Products from "../api/products";
 import Testimonials from "~/api/testimonials";
 import Support from "~/api/support";
 import Auth from "~/api/auth";
+import Stripe from "~/api/stripe";
 
 const factories = ($fetch) => {
   return {
@@ -9,6 +10,7 @@ const factories = ($fetch) => {
     testimonials: Testimonials($fetch),
     support: Support($fetch),
     auth: Auth($fetch),
+    stripe: Stripe($fetch),
   };
 };
 

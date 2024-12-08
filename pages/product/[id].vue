@@ -1,11 +1,11 @@
 <script setup>
-import { useProductsStore } from "@/store/products";
-import { useRouter, useRoute } from "vue-router";
 import {
   ArrowLeftIcon,
   StarIcon as StarIconSolid,
+  ChevronLeftIcon,
+  ChevronRightIcon,
 } from "@heroicons/vue/24/solid";
-import { StarIcon } from "@heroicons/vue/24/outline";
+import { StarIcon, FunnelIcon } from "@heroicons/vue/24/outline";
 import {
   NumberField,
   NumberFieldContent,
@@ -16,10 +16,24 @@ import {
 import { useCartStore } from "@/store/cart";
 import { useToast } from "@/components/ui/toast/use-toast";
 import { useReviewStore } from "@/store/reviews";
-import { onMounted } from "vue";
+import { onMounted, onUnmounted, watchEffect } from "vue";
 import DefaultUserIcon from "@/assets/images/default-user-icon.jpg";
-import { ChevronLeftIcon, ChevronRightIcon } from "@heroicons/vue/24/solid";
 import { Button } from "@/components/ui/button";
+import { useWindowSize } from "@vueuse/core";
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+  DropdownMenuSub,
+  DropdownMenuSubTrigger,
+  DropdownMenuPortal,
+  DropdownMenuSubContent,
+} from "@/components/ui/dropdown-menu";
+import { useThrottleFn } from "@vueuse/core";
+import { useProductsStore } from "~/store/products";
 
 const productsStore = useProductsStore();
 const route = useRoute();
@@ -61,7 +75,179 @@ const addToCart = () => {
 onMounted(async () => {
   selectedProduct.value = await productsStore.showProduct(route.params.id);
   reviewStore.getProductReviews({ productId: route.params.id });
+  
+  // Initial load of products
+  const products = await productsStore.getProducts();
+  
+  // Add scroll event listener
+  window.addEventListener("scroll", handleScroll);
 });
+
+onUnmounted(() => {
+  window.removeEventListener("scroll", handleScroll);
+});
+
+const { width } = useWindowSize();
+const currentItems = ref(8);
+const totalItems = ref(0);
+const isLoading = ref(false);
+const progress = ref(15);
+
+// Create a composable for product filtering and sorting
+const useProductFiltering = () => {
+  const filterState = reactive({
+    categories: {
+      Keychains: false,
+      'Post Cards': false,
+      Badges: false,
+      Prints: false
+    },
+    sort: {
+      az: false,
+      lowPrice: false,
+      rating: true
+    }
+  });
+
+  const hasActiveCategories = computed(() => 
+    Object.values(filterState.categories).some(Boolean)
+  );
+
+  const filteredProducts = computed(() => {
+    const products = productsStore.products?.data || [];
+    
+    if (!hasActiveCategories.value) {
+      return products.filter(p => p._id !== route.params.id); // Exclude current product
+    }
+
+    return products.filter(product => 
+      filterState.categories[product.category] && product._id !== route.params.id
+    );
+  });
+
+  const sortedProducts = computed(() => {
+    if (!filteredProducts.value.length) return [];
+
+    const products = [...filteredProducts.value];
+    
+    return products.sort((a, b) => {
+      if (filterState.sort.az) {
+        const nameCompare = a.name.localeCompare(b.name);
+        if (nameCompare !== 0) return nameCompare;
+      }
+      
+      if (filterState.sort.lowPrice) {
+        const priceCompare = a.price - b.price;
+        if (priceCompare !== 0) return priceCompare;
+      }
+      
+      if (filterState.sort.rating) {
+        return b.rating - a.rating;
+      }
+      
+      return 0;
+    });
+  });
+
+  return {
+    filterState,
+    sortedProducts,
+    hasActiveCategories
+  };
+};
+
+const { filterState, sortedProducts, hasActiveCategories } = useProductFiltering();
+
+watchEffect((fn) => {
+  const timer = setTimeout(() => (progress.value = 70), 500);
+
+  if (!hasActiveCategories.value) {
+    return clearTimeout(timer);
+  }
+
+  changeCurrentValue();
+  fn(() => clearTimeout(timer));
+});
+
+// Computed properties for checkbox bindings
+const showKeychains = computed({
+  get: () => filterState.categories.Keychains,
+  set: (value) => filterState.categories.Keychains = value
+});
+
+const showPostCards = computed({
+  get: () => filterState.categories['Post Cards'],
+  set: (value) => filterState.categories['Post Cards'] = value
+});
+
+const showBadges = computed({
+  get: () => filterState.categories.Badges,
+  set: (value) => filterState.categories.Badges = value
+});
+
+const showPrints = computed({
+  get: () => filterState.categories.Prints,
+  set: (value) => filterState.categories.Prints = value
+});
+
+const showAZ = computed({
+  get: () => filterState.sort.az,
+  set: (value) => filterState.sort.az = value
+});
+
+const showLowPrice = computed({
+  get: () => filterState.sort.lowPrice,
+  set: (value) => filterState.sort.lowPrice = value
+});
+
+const showRating = computed({
+  get: () => filterState.sort.rating,
+  set: (value) => filterState.sort.rating = value
+});
+
+const displayItems = computed(() => {
+  totalItems.value = sortedProducts.value.length;
+  return `Showing ${currentItems.value} out of ${totalItems.value} products`;
+});
+
+const changeCurrentValue = () => {
+  currentItems.value = sortedProducts.value.length;
+};
+
+// Optimize loading logic
+const loadMoreThreshold = 200;
+const canLoadMore = computed(() => {
+  const activeCategory = Object.entries(filterState.categories)
+    .find(([_, isActive]) => isActive)?.[0];
+    
+  if (!activeCategory) {
+    return currentItems.value < totalItems.value;
+  }
+  
+  const categoryProducts = productsStore.products?.data
+    .filter(product => product.category === activeCategory && product._id !== route.params.id);
+    
+  return currentItems.value < (categoryProducts?.length || 0);
+});
+
+const handleScroll = useThrottleFn(() => {
+  const scrollPosition = window.innerHeight + window.scrollY;
+  const documentHeight = document.body.offsetHeight;
+  
+  if (scrollPosition >= documentHeight - loadMoreThreshold && !isLoading.value) {
+    if (currentItems.value < sortedProducts.value.length) {
+      isLoading.value = true;
+      progress.value = 15;
+      
+      // Simulate loading delay
+      setTimeout(() => {
+        currentItems.value += 4;
+        progress.value = 100;
+        isLoading.value = false;
+      }, 500);
+    }
+  }
+}, 100);
 </script>
 
 <template>
@@ -83,7 +269,9 @@ onMounted(async () => {
     </div>
 
     <div>
-      <h1 class="font-bold product-name">{{ selectedProduct?.name }}</h1>
+      <h1 class="font-black font-jakarta product-name">
+        {{ selectedProduct?.name }}
+      </h1>
       <p class="my-1 text-sm">{{ selectedProduct?.description }}</p>
 
       <div class="flex items-center mt-2.5">
@@ -99,26 +287,26 @@ onMounted(async () => {
         >
       </div>
 
-      <p class="font-bold text-[1.5rem] my-2">
+      <p class="font-black text-[1.5rem] my-2">
         RM {{ selectedProduct?.price }}
       </p>
 
       <hr class="border-[1px] border-[rgba(0,0,0,0.2)] rounded-[4px]" />
 
       <div class="grid grid-cols-2 gap-3 my-7">
-        <div class="border-[gray] border-[1px] rounded-[4px] p-3">
+        <div class="border-[gray] border-[1px] rounded-[4px] p-3 bg-white/50">
           <p class="mb-2 text-sm font-bold">Width</p>
           <p class="text-xs leading-5">{{ selectedProduct?.width }}</p>
         </div>
-        <div class="border-[gray] border-[1px] rounded-[4px] p-3">
+        <div class="border-[gray] border-[1px] rounded-[4px] p-3 bg-white/50">
           <p class="mb-2 text-sm font-bold">Height</p>
           <p class="text-xs leading-5">{{ selectedProduct?.height }}</p>
         </div>
-        <div class="border-[gray] border-[1px] rounded-[4px] p-3">
+        <div class="border-[gray] border-[1px] rounded-[4px] p-3 bg-white/50">
           <p class="mb-2 text-sm font-bold">Material</p>
           <p class="text-xs leading-5">{{ selectedProduct?.material }}</p>
         </div>
-        <div class="border-[gray] border-[1px] rounded-[4px] p-3">
+        <div class="border-[gray] border-[1px] rounded-[4px] p-3 bg-white/50">
           <p class="mb-2 text-sm font-bold">Stock</p>
           <p class="text-xs leading-5">{{ selectedProduct?.stock }}</p>
         </div>
@@ -156,14 +344,16 @@ onMounted(async () => {
     <!-- Product Reviews -->
     <div class="space-y-8">
       <div class="flex justify-between items-center">
-        <h2 class="text-2xl font-semibold">Customer Reviews</h2>
+        <h2 class="text-2xl font-black font-jakarta">Customer Reviews</h2>
         <div v-if="reviewStore.hasReviews" class="flex items-center gap-2">
           <div class="flex items-center text-yellow-400">
             <span v-for="i in 5" :key="i" class="text-xl">
               {{ i <= reviewStore.averageRating ? "★" : "☆" }}
             </span>
           </div>
-          <span class="text-gray-600">({{ reviewStore.averageRating }})</span>
+          <span class="text-gray-600 font-semibold text-sm"
+            >({{ reviewStore.averageRating }})</span
+          >
         </div>
       </div>
 
@@ -184,11 +374,14 @@ onMounted(async () => {
         No reviews yet for this product
       </div>
 
-      <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div
+        v-else
+        class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 min-h-[200px]"
+      >
         <div
           v-for="review in reviewStore.productReviews"
           :key="review.id"
-          class="bg-white p-6 rounded-lg shadow-sm border border-gray-100"
+          class="bg-white/50 p-6 rounded-lg shadow-sm border border-gray-100 flex flex-col justify-center"
         >
           <div class="flex items-center gap-4 mb-4">
             <img
@@ -198,7 +391,9 @@ onMounted(async () => {
             />
 
             <div class="flex-grow">
-              <h3 class="font-medium text-gray-900">{{ review.username }}</h3>
+              <h3 class="font-medium text-gray-900 text-sm font-jakarta">
+                {{ review.username }}
+              </h3>
               <div class="flex items-center gap-2">
                 <div class="flex text-yellow-400">
                   <span v-for="i in 5" :key="i">
@@ -212,7 +407,9 @@ onMounted(async () => {
             </div>
           </div>
 
-          <p class="text-gray-700 leading-relaxed">{{ review.testimonial }}</p>
+          <p class="text-gray-700 text-sm mt-2 leading-relaxed">
+            {{ review.testimonial }}
+          </p>
         </div>
       </div>
       <!-- Pagination Controls -->
@@ -255,11 +452,134 @@ onMounted(async () => {
       </div>
     </div>
   </div>
+
+  <!-- More Products -->
+  <div class="py-8 max-w-[1024px] mx-auto" :class="props.paddingFix">
+    <div
+      :class="[props.paddingFix, 'mt-10 max-w-[1024px] mx-auto', width >= 450 ? 'flex justify-between' : '']"
+    >
+      <div class="grid gap-2 mb-5">
+        <h2 class="text-2xl font-black font-jakarta">More Products</h2>
+        <p class="text-[13px]">
+          Note: Combining sorting methods will prioritize alphabetical order.
+        </p>
+      </div>
+      <DropdownMenu :modal="false">
+        <DropdownMenuTrigger as-child>
+          <Button
+            :class="width >= 450 ? 'w-auto' : 'w-full'"
+            class="flex items-center gap-1 text-xs"
+            variant="outline"
+          >
+            Sort By
+            <FunnelIcon class="size-4" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent
+          class="w-40"
+          :class="width >= 450 && width <= 1024 && 'mr-5'"
+        >
+          <DropdownMenuLabel>Sorting</DropdownMenuLabel>
+          <DropdownMenuSeparator />
+
+          <!-- Sub Menu -->
+          <DropdownMenuSub>
+            <DropdownMenuSubTrigger>
+              <span class="text-xs">Categories</span>
+            </DropdownMenuSubTrigger>
+            <DropdownMenuPortal>
+              <DropdownMenuSubContent :class="width >= 450 ? 'mr-0' : 'mx-5'">
+                <DropdownMenuCheckboxItem
+                  @click="changeCurrentValue"
+                  v-model:checked="showKeychains"
+                >
+                  <span class="text-xs">Keychains</span>
+                </DropdownMenuCheckboxItem>
+                <DropdownMenuCheckboxItem
+                  @click="changeCurrentValue"
+                  v-model:checked="showPostCards"
+                >
+                  <span class="text-xs">Post Cards</span>
+                </DropdownMenuCheckboxItem>
+                <DropdownMenuCheckboxItem
+                  @click="changeCurrentValue"
+                  v-model:checked="showBadges"
+                >
+                  <span class="text-xs">Badges</span>
+                </DropdownMenuCheckboxItem>
+                <DropdownMenuCheckboxItem
+                  @click="changeCurrentValue"
+                  v-model:checked="showPrints"
+                >
+                  <span class="text-xs">Prints</span>
+                </DropdownMenuCheckboxItem>
+              </DropdownMenuSubContent>
+            </DropdownMenuPortal>
+          </DropdownMenuSub>
+
+          <DropdownMenuCheckboxItem @click="" v-model:checked="showAZ">
+            <span class="text-xs">A-Z</span>
+          </DropdownMenuCheckboxItem>
+          <DropdownMenuCheckboxItem v-model:checked="showLowPrice">
+            <span class="text-xs">Low Price</span>
+          </DropdownMenuCheckboxItem>
+          <DropdownMenuCheckboxItem v-model:checked="showRating">
+            <span class="text-xs">High Rating</span>
+          </DropdownMenuCheckboxItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </div>
+
+    <div
+      :class="[width >= 420 && 'grid-cols-2', width >= 650 && 'grid-cols-3', width >= 900 && 'grid-cols-4']"
+      class="grid items-stretch gap-4"
+    >
+      <div
+        class="grid border-[1px] rounded-[8px] border-border-color px-4 py-4 cursor-pointer"
+        v-for="(product, index) in sortedProducts?.slice(0, currentItems)"
+        :key="index"
+        @click="router.push(`/product/${product._id}`)"
+      >
+        <img
+          :src="product.imageUrl"
+          alt="product"
+          class="w-[120px] h-[120px] object-cover object-top justify-self-center rounded-[8px]"
+        />
+        <div class="grid gap-1.5 mt-4">
+          <h2 class="text-[15px] font-medium header-font">
+            {{ product.name }}
+          </h2>
+          <p class="text-sm font-medium">RM {{ product.price }}</p>
+
+          <div class="flex items-center mt-1">
+            <div v-for="star in 5" :key="star">
+              <StarIconSolid
+                v-if="star <= product.rating"
+                class="text-yellow-500 size-4"
+              />
+              <StarIcon v-else class="text-black size-4" />
+            </div>
+            <div class="ml-2">
+              <p class="text-xs font-medium">
+                ({{ product.numReviews }} reviews)
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="flex items-center justify-center mt-6">
+      <div
+        v-if="isLoading"
+        class="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto"
+      ></div>
+    </div>
+  </div>
+
 </template>
 
 <style scoped>
 .product-name {
-  font-family: "Plus Jakarta Sans", sans-serif;
   font-size: clamp(1.65rem, 3vw, 2rem);
 }
 </style>

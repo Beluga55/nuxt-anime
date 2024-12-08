@@ -11,7 +11,8 @@ export default {
       price: product.price,
       quantity: 0,
       stock: product.stock,
-      image: product.imageUrl || product.image // Handle both imageUrl and image fields
+      image: product.imageUrl || product.image, // Handle both imageUrl and image fields
+      description: product.description
     };
 
     // 2. Check quantity against stock limit
