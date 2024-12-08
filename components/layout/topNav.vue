@@ -164,10 +164,19 @@ onMounted(() => {
 
         <Popover :open="isCartOpen">
           <PopoverTrigger @click="isCartOpen = !isCartOpen" asChild>
-            <ShoppingBagIcon class="cursor-pointer size-5" />
+            <div class="relative flex items-center justify-center py-1 rounded-full">
+              <ShoppingBagIcon class="cursor-pointer size-5" />
+              <div
+                class="absolute -top-2 -right-2 text-xs font-medium rounded-full bg-primary-color text-white w-4 h-4 flex items-center justify-center"
+              >
+                {{ cartStore.totalItems }}
+              </div>
+            </div>
           </PopoverTrigger>
           <PopoverContent
             class="w-full min-w-[200px] mt-2 bg-background-color p-4 rounded-[8px] border-2"
+            side="bottom"
+            align="center"
           >
             <p class="text-sm font-medium mb-2">
               Cart Items ({{ cartStore.totalItems }})

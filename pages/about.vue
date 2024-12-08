@@ -9,7 +9,7 @@ import {
 import { StarIcon as StarIconSolid } from "@heroicons/vue/24/solid";
 import KeqingBanner from "@/assets/images/keqing.jpg";
 import DefaultUserIcon from "@/assets/images/default-user-icon.jpg";
-import { useTestimonialsStore } from "~/store/testimonials/index.js";
+import { useTestimonialsStore } from "~/store/testimonials";
 import SwiperCore, { Navigation } from "swiper";
 import { Swiper, SwiperSlide } from "swiper/vue";
 import { useWindowSize } from "@vueuse/core";
@@ -33,12 +33,18 @@ const props = defineProps({
 
 const { width } = useWindowSize();
 const testimonialsStore = useTestimonialsStore();
-const testimonials = computed(() => testimonialsStore?.testimonials);
+const testimonials = computed(() => testimonialsStore.testimonials);
 
-onMounted(async () => {
-  if (!testimonialsStore.testimonials) {
+const fetchTestimonials = async () => {
+  try {
     await testimonialsStore.getTestimonials();
+  } catch (error) {
+    console.error("Error fetching testimonials:", error);
   }
+};
+
+onMounted(() => {
+  fetchTestimonials();
 });
 </script>
 
@@ -191,7 +197,7 @@ onMounted(async () => {
     </div>
   </div>
 
-  <!-- Testimonialsm -->
+  <!-- Testimonials -->
   <div class="py-20 max-w-[1024px] mx-auto" :class="props.paddingFix">
     <div class="grid">
       <h1 class="section-title text-[#333] font-semibold text-center">
@@ -265,16 +271,18 @@ onMounted(async () => {
       </swiper-slide>
     </swiper>
     <div class="flex items-center justify-center gap-2 mt-5">
-      <Button
-        variant="secondary"
-        class="button-prev border-zinc-400 border-[1px] px-2 py-2 h-auto"
-        ><ChevronLeftIcon class="size-4"
-      /></Button>
-      <Button
-        variant="secondary"
-        class="button-next border-zinc-400 border-[1px] px-2 py-2 h-auto"
-        ><ChevronRightIcon class="size-4"
-      /></Button>
+      <button
+        type="button"
+        class="button-prev border-zinc-400 border-[1px] px-2 py-2 h-auto rounded"
+      >
+        <ChevronLeftIcon class="size-4" />
+      </button>
+      <button
+        type="button"
+        class="button-next border-zinc-400 border-[1px] px-2 py-2 h-auto rounded"
+      >
+        <ChevronRightIcon class="size-4" />
+      </button>
     </div>
   </div>
 </template>

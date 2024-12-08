@@ -12,5 +12,15 @@ export default () => {
           .then((res) => res.data);
         return testimonialRes;
       }),
+      
+    getProductReviews: async ({ productId, page = 1, limit = 3 }) =>
+      apiWrapper(async () => {
+        const reviews = await axiosClient
+          .get(`/testimonials/product/${productId}`, {
+            params: { page, limit }
+          })
+          .then((res) => res.data);
+        return reviews;
+      }),
   };
 };

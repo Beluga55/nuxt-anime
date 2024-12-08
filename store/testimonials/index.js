@@ -4,7 +4,7 @@ import actions from "./actions";
 import { defineStore } from "pinia";
 
 export const useTestimonialsStore = defineStore("testimonials", {
-  states,
+  state: states,
   getters,
   actions,
 });

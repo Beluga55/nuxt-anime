@@ -2,14 +2,11 @@ import { getActivePinia } from "pinia";
 const useApi = () => useNuxtApp().$api;
 
 export default {
-  async getTestimonials(data) {
-    const [testimonial, error] = await useApi().testimonials.getTestimonials(
-      data
-    );
+  async getTestimonials() {
+    const [response, error] = await useApi().testimonials.getTestimonials();
     if (error) return;
 
-    this.testimonials = testimonial;
-
-    return testimonial;
+    this.testimonials = response.reviews;
+    return response;
   },
 };

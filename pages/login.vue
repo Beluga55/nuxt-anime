@@ -92,14 +92,10 @@ const { isReady, login } = useTokenClient({
 </script>
 
 <template>
-  <div :class="[width >= 900 && 'grid items-center h-screen']">
+  <div class="flex items-center justify-center min-h-screen py-8">
     <div
       class="justify-self-center"
-      :class="[
-        width >= 900
-          ? 'w-[400px] px-0 py-0'
-          : 'backdrop-filter absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2  w-[calc(100%-2.5rem)] max-w-[450px] px-5 py-5',
-      ]"
+      :class="width >= 900 ? 'w-[400px] px-0 py-0' : 'relative w-[calc(100%-2.5rem)] backdrop-filter max-w-[450px] mx-auto px-5 py-5 rounded-lg'"
     >
       <img
         :src="nahida"
