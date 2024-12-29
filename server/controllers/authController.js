@@ -38,6 +38,11 @@ export const registerUser = async (req, res) => {
 
     res.status(201).json({ message: "User registered successfully" });
   } catch (error) {
+    if (error.code === 11000) {
+      return res
+        .status(400)
+        .json({ message: "User with this email already exists, Please login with your password" });
+    }
     console.error("Error signing up user: ", error);
     res.status(500).json({ message: "Internal server error" });
   }
@@ -45,7 +50,7 @@ export const registerUser = async (req, res) => {
 
 export const loginUser = async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { email, password, remember } = req.body;
 
     const user = await User.findOne({ email });
 
@@ -73,6 +78,7 @@ export const loginUser = async (req, res) => {
       email: user.email,
       image: signedUrl,
       token,
+      remember,
     };
 
     // Send the user data along with the signed URL
@@ -110,6 +116,11 @@ export const loginGoogle = async (req, res) => {
     // Send back the token
     res.status(200).json({ token });
   } catch (error) {
+    if (error.code === 11000) {
+      return res
+        .status(400)
+        .json({ message: "User with this email already exists, Please login with your password" });
+    }
     console.error("Error logging in user: ", error);
     res.status(500).json({ message: "Internal server error" });
   }

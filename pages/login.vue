@@ -17,11 +17,14 @@ import { useWindowSize } from "@vueuse/core";
 import nahida from "@/assets/images/nahida.png";
 import { useAuthStore } from "~/store/auth";
 import { useToast } from "@/components/ui/toast/use-toast";
+import { useTokenStatus } from "@/composables/useTokenStatus";
 
 // Get the window size
+const rememberMe = ref(false);
 const { width } = useWindowSize();
 const authStore = useAuthStore();
 const { toast, dismiss } = useToast();
+const { setTokenStatus, tokenStatus } = useTokenStatus(); // Initialize the setTokenStatus function
 
 // Validation Schema for the form (email, password)
 const validationSchema = toTypedSchema(
@@ -42,14 +45,36 @@ const { handleSubmit, errors, resetForm } = useForm({
 const { value: email } = useField("email");
 const { value: password } = useField("password");
 
+const toggleRememberMe = () => {
+  rememberMe.value = !rememberMe.value;
+
+  console.log(rememberMe.value);
+
+  if (rememberMe.value) {
+    toast({
+      variant: "default",
+      description: "Remember me is enabled. Need to login every 7 days",
+    });
+  } else {
+    toast({
+      variant: "default",
+      description: "Remember me is disabled. Need to login every 3 days",
+    });
+  }
+};
+
 const handleLogin = handleSubmit(async () => {
   const body = {
     email: email.value,
     password: password.value,
+    remember: rememberMe.value,
   };
+
+  console.log(body.remember);
 
   try {
     await authStore.login(body);
+    setTokenStatus(true); // Set token status to true after successful login
   } catch (error) {
     toast({
       variant: "destructive",
@@ -78,7 +103,18 @@ const handleOnSuccess = async (response: AuthCodeFlowSuccessResponse) => {
   }
 
   // Can store the user info into the database
-  await authStore.loginGoogle(data);
+  try {
+    await authStore.loginGoogle(data);
+  } catch (error) {
+    toast({
+      variant: "destructive",
+      description: (error as Error).message,
+    });
+
+    setTimeout(() => {
+      dismiss();
+    }, 5000);
+  }
 };
 
 const handleOnError = (errorResponse: AuthCodeFlowErrorResponse) => {
@@ -145,7 +181,7 @@ const { isReady, login } = useTokenClient({
             <!-- Remember me and forgot password -->
             <div class="flex items-center justify-between mt-5 mb-3">
               <div class="flex items-center gap-2">
-                <Checkbox id="remember" />
+                <Checkbox @click="toggleRememberMe" id="remember" />
                 <label
                   for="remember"
                   class="text-xs font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"

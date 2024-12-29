@@ -14,6 +14,7 @@ import { useWindowSize } from "@vueuse/core";
 import { useCartStore } from "@/store/cart";
 import { loadStripe } from "@stripe/stripe-js";
 import { usePaymentStore } from "~/store/payment";
+import { useTokenStatus } from "@/composables/useTokenStatus";
 
 import {
   Popover,
@@ -48,6 +49,7 @@ const isPopoverOpen = ref(false);
 const isSearchOpen = ref(false);
 const isCartOpen = ref(false);
 const profilePicture = ref("");
+const { tokenStatus, setTokenStatus } = useTokenStatus();
 
 const toggleSidebar = () => (sidebarValue.value = !sidebarValue.value);
 const closeSidebar = () => (sidebarValue.value = false);
@@ -72,7 +74,9 @@ const handleLogout = () => {
   isPopoverOpen.value = false;
   localStorage.removeItem("userInfo");
   localStorage.removeItem("token");
+  localStorage.removeItem("tokenExpiration");
   profilePicture.value = "";
+  setTokenStatus(false);
   router.push("/");
 };
 
@@ -122,6 +126,25 @@ onMounted(() => {
     scrollHeader.value = scrollY.value > 30 ? "bg-white" : "bg-transparent";
   };
   window.addEventListener("scroll", handleScroll);
+
+  const token = localStorage.getItem("token");
+  const tokenExpiration = localStorage.getItem("tokenExpiration");
+
+  if (!token) {
+    router.push("/");
+  }
+
+  if (tokenExpiration) {
+    const expirationDate = new Date(tokenExpiration);
+    const currentDate = new Date();
+    
+    if (currentDate > expirationDate) {
+      localStorage.removeItem("token");
+      localStorage.removeItem("tokenExpiration");
+      setTokenStatus(false);
+      router.push("/");
+    }
+  }
 
   // Get the profile picture string from localStorage
   const loginData = localStorage.getItem("userInfo");
@@ -307,7 +330,7 @@ onMounted(() => {
             class="list-none"
           >
             <UserCircleIcon
-              v-if="profilePicture === ''"
+              v-if="!tokenStatus"
               class="cursor-pointer size-5"
             />
             <img
@@ -319,7 +342,7 @@ onMounted(() => {
             />
           </PopoverTrigger>
           <PopoverContent
-            v-if="profilePicture === ''"
+            v-if="!tokenStatus"
             class="bg-white border-[1px] border-border-color py-3 px-4 rounded-[8px] flex items-center flex-col w-max gap-2 mt-2 text-text-color-dark"
           >
             <NuxtLink

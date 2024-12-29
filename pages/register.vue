@@ -56,7 +56,7 @@ const submitForm = handleSubmit(async () => {
   } catch (error) {
     toast({
       variant: "destructive",
-      description: error.message,
+      description: (error as Error).message,
     });
 
     setTimeout(() => {
@@ -155,24 +155,6 @@ const submitForm = handleSubmit(async () => {
                 }"
                 v-model="confirmPassword"
               />
-            </div>
-
-            <!-- Remember me and forgot password -->
-            <div class="flex items-center justify-between mt-5 mb-3">
-              <div class="flex items-center gap-2">
-                <Checkbox id="remember" />
-                <label
-                  for="remember"
-                  class="text-xs font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                >
-                  Remember me
-                </label>
-              </div>
-              <NuxtLink
-                to="/forgot-password"
-                class="text-xs font-medium leading-none"
-                >Forgot password?</NuxtLink
-              >
             </div>
 
             <Button

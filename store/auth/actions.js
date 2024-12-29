@@ -7,8 +7,17 @@ export default {
 
     if (error) return;
 
+    const token = login.token;
+    const remember = login.remember;
+
     // Set the token in the local storage
-    localStorage.setItem("token", login.token);
+    if (remember) {
+      localStorage.setItem("token", token);
+      localStorage.setItem("tokenExpiration", new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString());
+    } else {
+      localStorage.setItem("token", token);
+      localStorage.setItem("tokenExpiration", new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString());
+    }
 
     // Set the user data into the store
     this.loginData = login;
@@ -30,7 +39,7 @@ export default {
   async loginGoogle(data) {
     const [loginGoogle, error] = await useApi().auth.loginGoogle(data);
 
-    if (error) return;
+    if (error) return error.message;
 
     // Set the token in the local storage
     localStorage.setItem("token", loginGoogle.token);
@@ -43,7 +52,7 @@ export default {
   async signup(data) {
     const [signup, error] = await useApi().auth.register(data);
 
-    if (error) return;
+    if (error) return error.message;
 
     // Redirect to login page
     useRouter().push("/login");
