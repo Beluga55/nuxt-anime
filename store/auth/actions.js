@@ -29,9 +29,6 @@ export default {
     this.loginData = login;
     localStorage.setItem("userInfo", JSON.stringify(this.loginData));
 
-    // Redirect to products page
-    useRouter().push("/products");
-
     // Return the login response
     return login;
   },
@@ -64,10 +61,34 @@ export default {
 
     if (error) return error.message;
 
+    const loginData = {
+      email: data.email,
+      password: data.password,
+    };
+
+    this.login(loginData);
+
     // Redirect to login page
-    useRouter().push("/login");
+    useRouter().push("/otp");
 
     // Return the signup response
     return signup;
+  },
+  async otp(data) {
+    const [otp, error] = await useApi().auth.otp(data);
+
+    if (error) return error.message;
+
+    return otp;
+  },
+  async verifyOtp(data) {
+    const [verifyOtp, error] = await useApi().auth.verifyOtp(data);
+
+    if (error) return error.message;
+
+    // Redirect to the products page
+    useRouter().push("/products");
+
+    return verifyOtp;
   },
 };

@@ -18,6 +18,7 @@ const authStore = useAuthStore();
 const { toast, dismiss } = useToast();
 const isSubmitted = ref(false);
 const rememberMe = ref(false);
+const selectedCountry = ref("");
 
 const validationSchema = toTypedSchema(
   object({
@@ -50,12 +51,7 @@ const toggleRememberMe = () => {
   if (rememberMe.value) {
     toast({
       variant: "default",
-      description: "Remember me is enabled. Need to login every 7 days",
-    });
-  } else {
-    toast({
-      variant: "default",
-      description: "Remember me is disabled. Need to login every 3 days",
+      description: "Remember me is enabled. Need to login every 30 days",
     });
   }
 };
@@ -82,6 +78,11 @@ const onPhoneInput = (formattedNumber, phoneObject) => {
   }
 };
 
+const onCountryChanged = (country) => {
+  const { name } = country;
+  selectedCountry.value = name;
+};
+
 const phoneErrorMessage = computed(() => {
   if (!phoneErrors.value) return "";
   return Array.isArray(phoneErrors.value)
@@ -98,6 +99,7 @@ const submitForm = handleSubmit(async () => {
     email: email.value,
     password: password.value,
     confirmPassword: confirmPassword.value,
+    country: selectedCountry.value,
   };
 
   try {
@@ -165,6 +167,7 @@ const submitForm = handleSubmit(async () => {
               <vue-tel-input
                 v-model="phone"
                 @input="onPhoneInput"
+                @country-changed="onCountryChanged"
                 :inputOptions="{
                   required: true,
                   placeholder:

@@ -18,9 +18,11 @@ import nahida from "@/assets/images/nahida.png";
 import { useAuthStore } from "~/store/auth";
 import { useToast } from "@/components/ui/toast/use-toast";
 import { useTokenStatus } from "@/composables/useTokenStatus";
+import { useRouter } from "vue-router";
 
 // Get the window size
 const rememberMe = ref(false);
+const router = useRouter();
 const { width } = useWindowSize();
 const authStore = useAuthStore();
 const { toast, dismiss } = useToast();
@@ -53,12 +55,7 @@ const toggleRememberMe = () => {
   if (rememberMe.value) {
     toast({
       variant: "default",
-      description: "Remember me is enabled. Need to login every 7 days",
-    });
-  } else {
-    toast({
-      variant: "default",
-      description: "Remember me is disabled. Need to login every 3 days",
+      description: "Remember me is enabled. Need to login every 30 days",
     });
   }
 };
@@ -75,6 +72,8 @@ const handleLogin = handleSubmit(async () => {
   try {
     await authStore.login(body);
     setTokenStatus(true); // Set token status to true after successful login
+
+    router.push("/products");
   } catch (error) {
     toast({
       variant: "destructive",
@@ -92,8 +91,6 @@ const handleLogin = handleSubmit(async () => {
 
 const handleOnSuccess = async (response: AuthCodeFlowSuccessResponse) => {
   const userInfo = await authStore.authGoogle(response.access_token);
-
-  console.log(userInfo);
 
   // Store the user info into the local storage
   localStorage.setItem("userInfo", JSON.stringify(userInfo));

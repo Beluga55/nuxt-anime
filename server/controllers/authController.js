@@ -3,12 +3,17 @@ import { getSignedUrl } from "./getImagesFromCloud.js";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import * as dotenv from "dotenv";
+import twilio from 'twilio';
+import Otp from "../models/Otp.js";
 
 dotenv.config();
 
+// Initialize Twilio client
+const client = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
+
 export const registerUser = async (req, res) => {
   try {
-    const { username, phone, email, password, confirmPassword } = req.body;
+    const { username, phone, email, password, confirmPassword, country } = req.body;
 
     const existingUser = await User.findOne({ email });
 
@@ -29,6 +34,7 @@ export const registerUser = async (req, res) => {
     const user = new User({
       username,
       phone,
+      country,
       email,
       password: hashedPassword,
       isAdmin: false,
@@ -125,5 +131,82 @@ export const loginGoogle = async (req, res) => {
     }
     console.error("Error logging in user: ", error);
     res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+export const requestOtp = async (req, res) => {
+  try {
+    const phone = process.env.TWILIO_PHONE_NUMBER;
+    
+    if (!phone) {
+      return res.status(400).json({ 
+        success: false,
+        message: "Phone number is required" 
+      });
+    }
+
+    // Use Twilio Verify instead of direct message
+    const verification = await client.verify.v2
+      .services("VAb9814c0ccbe92dbccc8459fcdca9145e")
+      .verifications
+      .create({
+        to: phone,
+        channel: 'sms'
+      });
+
+    res.status(200).json({ 
+      success: true,
+      message: "OTP sent successfully",
+      verificationSid: verification.sid
+    });
+  } catch (error) {
+    console.error("Error sending OTP:", error);
+    res.status(500).json({ 
+      success: false,
+      message: "Failed to send OTP",
+      error: error.message 
+    });
+  }
+};
+
+export const verifyOtp = async (req, res) => {
+  try {
+    const { otp } = req.body;
+    const phone = process.env.TWILIO_PHONE_NUMBER;
+
+    if (!phone || !otp) {
+      return res.status(400).json({
+        success: false,
+        message: "Phone and OTP are required"
+      });
+    }
+
+    // Verify the code using Twilio Verify
+    const verificationCheck = await client.verify.v2
+      .services("VAb9814c0ccbe92dbccc8459fcdca9145e")
+      .verificationChecks
+      .create({
+        to: phone,
+        code: otp
+      });
+
+    if (verificationCheck.status === 'approved') {
+      res.status(200).json({
+        success: true,
+        message: "OTP verified successfully"
+      });
+    } else {
+      res.status(400).json({
+        success: false,
+        message: "Invalid OTP or OTP expired"
+      });
+    }
+  } catch (error) {
+    console.error("Error verifying OTP:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to verify OTP",
+      error: error.message
+    });
   }
 };

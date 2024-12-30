@@ -39,5 +39,19 @@ export default () => {
           .then((res) => res.data);
         return registerRes;
       }),
+    otp: async (data) =>
+      apiWrapper(async () => {
+        const otpRes = await axiosClient
+          .get("/auth/otp", data)
+          .then((res) => res.data);
+        return otpRes;
+      }),
+    verifyOtp: async (data) =>
+      apiWrapper(async () => {
+        const verifyOtpRes = await axiosClient
+          .post("/auth/verify-otp", data)
+          .then((res) => res.data);
+        return verifyOtpRes;
+      }),
   };
 };
