@@ -13,10 +13,16 @@ export default {
     // Set the token in the local storage
     if (remember) {
       localStorage.setItem("token", token);
-      localStorage.setItem("tokenExpiration", new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString());
+      localStorage.setItem(
+        "tokenExpiration",
+        new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
+      );
     } else {
       localStorage.setItem("token", token);
-      localStorage.setItem("tokenExpiration", new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString());
+      localStorage.setItem(
+        "tokenExpiration",
+        new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString()
+      );
     }
 
     // Set the user data into the store
@@ -41,8 +47,12 @@ export default {
 
     if (error) return error.message;
 
-    // Set the token in the local storage
+    // Set the token and expiration in the local storage
     localStorage.setItem("token", loginGoogle.token);
+    localStorage.setItem(
+      "tokenExpiration",
+      new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
+    );
 
     // Redirect to the products page
     useRouter().push("/products");

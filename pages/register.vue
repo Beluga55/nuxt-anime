@@ -10,16 +10,24 @@ import hutao from "@/assets/images/hutao.png";
 import { useWindowSize } from "@vueuse/core";
 import { useAuthStore } from "~/store/auth";
 import { useToast } from "@/components/ui/toast/use-toast";
+import { ref, computed } from "vue";
 
 // Get the window size
 const { width } = useWindowSize();
 const authStore = useAuthStore();
 const { toast, dismiss } = useToast();
+const isSubmitted = ref(false);
+const rememberMe = ref(false);
 
 const validationSchema = toTypedSchema(
   object({
     // Username, email, password, confirm password
     username: string().min(1, { message: "Username is required" }),
+    phone: string()
+      .min(1, { message: "Phone number is required" })
+      .refine((val) => val.startsWith("+") && val.length >= 10, {
+        message: "Invalid phone number format",
+      }),
     email: string().min(1, { message: "Email is required" }).email({
       message: "Invalid email format",
     }),
@@ -34,18 +42,59 @@ const validationSchema = toTypedSchema(
   })
 );
 
-const { handleSubmit, errors, resetForm } = useForm({
+const toggleRememberMe = () => {
+  rememberMe.value = !rememberMe.value;
+
+  console.log(rememberMe.value);
+
+  if (rememberMe.value) {
+    toast({
+      variant: "default",
+      description: "Remember me is enabled. Need to login every 7 days",
+    });
+  } else {
+    toast({
+      variant: "default",
+      description: "Remember me is disabled. Need to login every 3 days",
+    });
+  }
+};
+
+const {
+  handleSubmit,
+  meta: formMeta,
+  errors,
+  resetForm,
+} = useForm({
   validationSchema,
 });
 
 const { value: username } = useField("username");
+const { value: phone, errors: phoneErrors } = useField("phone");
 const { value: email } = useField("email");
 const { value: password } = useField("password");
 const { value: confirmPassword } = useField("confirmPassword");
 
+// Add this method to handle phone input
+const onPhoneInput = (formattedNumber, phoneObject) => {
+  if (phoneObject && phoneObject.number) {
+    phone.value = phoneObject.number.international;
+  }
+};
+
+const phoneErrorMessage = computed(() => {
+  if (!phoneErrors.value) return "";
+  return Array.isArray(phoneErrors.value)
+    ? phoneErrors.value[0]
+    : phoneErrors.value;
+});
+
 const submitForm = handleSubmit(async () => {
+  isSubmitted.value = true;
+
   const body = {
     username: username.value,
+    phone: phone.value,
     email: email.value,
     password: password.value,
     confirmPassword: confirmPassword.value,
@@ -65,6 +114,7 @@ const submitForm = handleSubmit(async () => {
   }
 
   resetForm();
+  isSubmitted.value = false;
 });
 </script>
 
@@ -72,7 +122,11 @@ const submitForm = handleSubmit(async () => {
   <div class="flex items-center justify-center min-h-screen py-8">
     <div
       class="justify-self-center"
-      :class="width >= 900 ? 'w-[400px] px-0 py-0' : 'relative w-[calc(100%-2.5rem)] backdrop-filter max-w-[450px] mx-auto px-5 py-5 rounded-lg'"
+      :class="
+        width >= 900
+          ? 'w-[400px] px-0 py-0'
+          : 'relative w-[calc(100%-2.5rem)] backdrop-filter max-w-[450px] mx-auto px-5 py-5 rounded-lg'
+      "
     >
       <img
         :src="hutao"
@@ -102,6 +156,39 @@ const submitForm = handleSubmit(async () => {
                 v-model="username"
               />
             </div>
+
+            <div class="flex gap-2 flex-col">
+              <label for="phone" class="text-left text-sm font-medium"
+                >Phone Number</label
+              >
+              <!-- Phone Number -->
+              <vue-tel-input
+                v-model="phone"
+                @input="onPhoneInput"
+                :inputOptions="{
+                  required: true,
+                  placeholder:
+                    (phone || formMeta.touched) && phoneErrorMessage
+                      ? phoneErrorMessage
+                      : 'Phone number is required',
+                }"
+                :validCharactersOnly="true"
+                mode="international"
+                class="w-full text-black bg-white py-[0.65rem] text-[13px] border-[1px] border-border-color outline-none rounded-sm mb-3"
+                :class="{
+                  'border-red-500':
+                    (phone || formMeta.touched) && phoneErrorMessage,
+                }"
+              ></vue-tel-input>
+
+              <p
+                v-if="(phone || formMeta.touched) && phoneErrorMessage"
+                class="text-red-500 text-xs font-medium -mt-2 mb-4"
+              >
+                {{ phoneErrorMessage }}
+              </p>
+            </div>
+
             <div class="flex gap-2 flex-col">
               <label for="email" class="text-sm font-medium text-left"
                 >Email</label
@@ -135,9 +222,7 @@ const submitForm = handleSubmit(async () => {
               />
             </div>
             <div class="flex gap-2 flex-col">
-              <label
-                for="confirmPassword"
-                class="text-sm font-medium text-left"
+              <label for="confirmPassword" class="text-sm font-medium text-left"
                 >Confirm Password</label
               >
               <input
@@ -155,6 +240,24 @@ const submitForm = handleSubmit(async () => {
                 }"
                 v-model="confirmPassword"
               />
+            </div>
+
+            <!-- Remember me and forgot password -->
+            <div class="flex items-center justify-between mt-5 mb-3">
+              <div class="flex items-center gap-2">
+                <Checkbox @click="toggleRememberMe" id="remember" />
+                <label
+                  for="remember"
+                  class="text-xs font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                >
+                  Remember me
+                </label>
+              </div>
+              <NuxtLink
+                to="/forgot-password"
+                class="text-xs font-medium leading-none"
+                >Forgot password?</NuxtLink
+              >
             </div>
 
             <Button
@@ -186,5 +289,8 @@ const submitForm = handleSubmit(async () => {
   background-color: rgba(17, 25, 40, 0.75);
   border-radius: 12px;
   border: 1px solid rgba(255, 255, 255, 0.125);
+}
+
+:global(.vti__input::placeholder) {
 }
 </style>

@@ -9,7 +9,7 @@ export default defineNuxtConfig({
     '@pinia/nuxt',
     'nuxt-marquee',
     'nuxt-vue3-google-signin',
-    'nuxt-particles'
+    'nuxt-particles',
   ],
   runtimeConfig: {
     public: {
@@ -18,7 +18,8 @@ export default defineNuxtConfig({
     }
   },
   plugins: [
-    '~/plugins/01.api.js'
+    '~/plugins/01.api.js',
+    '~/plugins/vue-tel-input.js'
   ],
   googleSignIn: {
     clientId: process.env.GOOGLE_CLIENT_ID

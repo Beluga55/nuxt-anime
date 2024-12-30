@@ -143,6 +143,8 @@ onMounted(() => {
       localStorage.removeItem("tokenExpiration");
       setTokenStatus(false);
       router.push("/");
+    } else {
+      setTokenStatus(true);
     }
   }
 

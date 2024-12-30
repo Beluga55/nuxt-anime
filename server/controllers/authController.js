@@ -8,7 +8,7 @@ dotenv.config();
 
 export const registerUser = async (req, res) => {
   try {
-    const { username, email, password, confirmPassword } = req.body;
+    const { username, phone, email, password, confirmPassword } = req.body;
 
     const existingUser = await User.findOne({ email });
 
@@ -28,6 +28,7 @@ export const registerUser = async (req, res) => {
     // Create a new user
     const user = new User({
       username,
+      phone,
       email,
       password: hashedPassword,
       isAdmin: false,
@@ -85,7 +86,7 @@ export const loginUser = async (req, res) => {
     res.status(200).json(userData);
   } catch (error) {
     console.error("Error logging in user: ", error);
-    res.status(500).json({ message: "Internal server error" });
+    res.status(500).json({ message: "Try login with your password, or google sign in" });
   }
 };
 
@@ -99,6 +100,7 @@ export const loginGoogle = async (req, res) => {
       // Create a new user
       user = new User({
         username: given_name,
+        phone: "",
         email: email,
         isAdmin: false,
         image: "",

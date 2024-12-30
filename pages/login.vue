@@ -93,6 +93,8 @@ const handleLogin = handleSubmit(async () => {
 const handleOnSuccess = async (response: AuthCodeFlowSuccessResponse) => {
   const userInfo = await authStore.authGoogle(response.access_token);
 
+  console.log(userInfo);
+
   // Store the user info into the local storage
   localStorage.setItem("userInfo", JSON.stringify(userInfo));
 
@@ -100,7 +102,7 @@ const handleOnSuccess = async (response: AuthCodeFlowSuccessResponse) => {
   const data = {
     given_name: userInfo.given_name,
     email: userInfo.email,
-  }
+  };
 
   // Can store the user info into the database
   try {
@@ -131,7 +133,11 @@ const { isReady, login } = useTokenClient({
   <div class="flex items-center justify-center min-h-screen py-8">
     <div
       class="justify-self-center"
-      :class="width >= 900 ? 'w-[400px] px-0 py-0' : 'relative w-[calc(100%-2.5rem)] backdrop-filter max-w-[450px] mx-auto px-5 py-5 rounded-lg'"
+      :class="
+        width >= 900
+          ? 'w-[400px] px-0 py-0'
+          : 'relative w-[calc(100%-2.5rem)] backdrop-filter max-w-[450px] mx-auto px-5 py-5 rounded-lg'
+      "
     >
       <img
         :src="nahida"
