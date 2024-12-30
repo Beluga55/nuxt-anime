@@ -68,8 +68,11 @@ export default {
 
     this.login(loginData);
 
+    // Redirect to the products page
+    useRouter().push("/products");
+
     // Redirect to login page
-    useRouter().push("/otp");
+    // useRouter().push("/otp");
 
     // Return the signup response
     return signup;
