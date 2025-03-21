@@ -1,0 +1,16 @@
+# Ignore server directory and all its contents
+server/
+server/**/*
+
+# Ignore configuration files that might reference the server
+nodemon.json
+pm2.config.js
+
+# Ignore other unnecessary files
+README.md
+.gitignore
+.git/
+node_modules/
+.env
+.env.*
+!.env.example

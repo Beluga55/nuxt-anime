@@ -1,0 +1,27 @@
+[
+  {
+    "value": "item-1",
+    "title": "How long does shipping take?",
+    "content": "Shipping times can vary widely depending on the shipping method chosen, the destination, and other factors. For domestic shipping within the same country, standard shipping typically takes anywhere from 2 to 8 business days. International shipping times are generally longer due to customs clearance and longer transit distances. Standard international shipping can take 2 to 4 weeks. Its important to note that these estimates are general and can vary based on the shipping carrier, specific routes, customs processing times, and any unforeseen delays such as weather events or peak shipping periods. Tracking information provided by the carrier can offer more precise delivery estimates."
+  },
+  {
+    "value": "item-2",
+    "title": "How can i track my order?",
+    "content": "To track your order, locate the tracking number provided in your order confirmation or shipping notification email. Visit the shipping carriers website (such as USPS, UPS, FedEx, or DHL), and enter the tracking number in the designated tracking section. This will provide you with the current status, location, and estimated delivery date of your package. If you encounter any issues, please contact our customer service team for further assistance."
+  },
+  {
+    "value": "item-3",
+    "title": "What if i forget my password?",
+    "content": "To reset your password, simply navigate to the reset password link provided on the login page. Once there, click on the link to initiate the password reset process. You will be prompted to enter your registered email address, and then you will receive an email with further instructions. Follow the steps outlined in the email, which will typically involve clicking a link to a secure page where you can enter a new password. Make sure your new password is strong and unique to enhance your account security. After successfully updating your password, you can log in with your new credentials. If you encounter any issues during this process, please contact our customer support team for assistance. This method ensures that you can recover your account easily and securely."
+  },
+  {
+    "value": "item-4",
+    "title": "Can i cancel my order?",
+    "content": "Yes, you can cancel your order if it has not yet been shipped. To request cancellation, please reach out to our customer service team promptly with your order details. Once the cancellation request is confirmed and the package has not left our facility, we will process the cancellation and issue a refund according to our refund policy. However, if the package has already been shipped, we regret that we are unable to cancel the order. In such cases, once you receive the package, you may be eligible to initiate a refund or exchange if the products is broken as per our return policy guidelines. For further assistance or inquiries regarding returns, please refer to our detailed return policy or contact our customer support team for personalized assistance."
+  },
+  {
+    "value": "item-5",
+    "title": "How do i contact customer service?",
+    "content": "You can contact our customer service team through multiple channels for your convenience. You can reach us via social media by messaging our official accounts on platforms like X, or Instagram. Alternatively, you can submit your inquiry or concern using the email form provided below. Our dedicated customer service representatives are committed to assisting you promptly and providing solutions to any issues or questions you may have. We look forward to assisting you and ensuring your experience with us is positive and seamless."
+  }
+]
