@@ -249,89 +249,169 @@ const loadMore = async () => {
 
 <template>
   <Toaster />
-  <div
-    class="mt-[9rem] grid gap-5 max-w-[1024px] mx-auto justify-center sm:grid-cols-2 sm:items-center px-5 lg:px-0"
-  >
-    <div>
-      <div class="flex items-center gap-2">
-        <ArrowLeftIcon class="text-black size-4 arrow-left" />
-        <span class="text-xs font-medium text-black">Go Back</span>
-      </div>
-      <img
-        :src="selectedProduct?.image"
-        alt="product"
-        class="w-full max-w-[350px] h-[325px] object-cover object-right mt-5 rounded-2xl md:max-w-[450px] md:h-[400px]"
-      />
-    </div>
+  <!-- Product Section -->
+  <div class="bg-gradient-to-br from-background-color via-secondary-color/5 to-background-color">
+    <div class="container max-w-[1024px] mx-auto py-6 pt-[9rem] px-5 lg:px-0">
+      <!-- Back Button -->
+      <button 
+        @click="router.back()" 
+        class="inline-flex items-center gap-2 mb-6 group cursor-pointer transition-all duration-200 hover:gap-3 bg-white/70 backdrop-blur-sm rounded-full px-4 py-2 shadow-md hover:shadow-lg border border-secondary-color/30"
+      >
+        <ArrowLeftIcon class="text-text-color size-4 group-hover:text-primary-color transition-colors duration-200" />
+        <span class="text-sm font-medium text-text-color group-hover:text-primary-color transition-colors duration-200">Back to Products</span>
+      </button>
 
-    <div>
-      <h1 class="font-black font-jakarta product-name">
-        {{ selectedProduct?.name }}
-      </h1>
-      <p class="my-1 text-sm">{{ selectedProduct?.description }}</p>
-
-      <div class="flex items-center mt-2.5">
-        <div v-for="star in 5" :key="star">
-          <StarIconSolid
-            v-if="star <= selectedProduct?.rating"
-            class="text-yellow-500 size-4"
-          />
-          <StarIcon v-else class="text-black size-4" />
+      <!-- Main Product Layout -->
+      <div class="grid lg:grid-cols-2 gap-6 lg:gap-10 items-start">
+        <!-- Product Image Section -->
+        <div class="w-full">
+          <div class="relative group">
+            <div class="relative bg-white/80 backdrop-blur-sm rounded-2xl p-4 border border-secondary-color/30 shadow-lg">
+              <img
+                :src="selectedProduct?.image"
+                :alt="selectedProduct?.name"
+                class="w-full h-[300px] md:h-[425px] object-cover rounded-xl shadow-md transition-transform duration-300 group-hover:scale-[1.02]"
+              />
+            </div>
+          </div>
         </div>
-        <span class="ml-2 text-xs font-semibold"
-          >({{ selectedProduct?.numReviews }} reviews)</span
-        >
-      </div>
 
-      <p class="font-black text-[1.5rem] my-2">
-        RM {{ selectedProduct?.price }}
-      </p>
+        <!-- Product Info Section -->
+        <div class="w-full space-y-5">
+          <!-- Product Header -->
+          <div class="space-y-3">
+            <div class="inline-flex items-center gap-2 bg-secondary-color/25 rounded-full px-3 py-1">
+              <div class="w-1.5 h-1.5 bg-primary-color rounded-full animate-pulse"></div>
+              <span class="text-xs font-medium text-text-color/80">Premium Quality</span>
+            </div>
+            
+            <h1 class="text-2xl md:text-3xl font-black font-jakarta text-text-color leading-tight">
+              {{ selectedProduct?.name }}
+            </h1>
+            
+            <p class="text-sm md:text-base text-text-color/70 leading-relaxed">
+              {{ selectedProduct?.description }}
+            </p>
+          </div>
 
-      <hr class="border-[1px] border-[rgba(0,0,0,0.2)] rounded-[4px]" />
+          <!-- Rating & Reviews -->
+          <div class="flex flex-col sm:flex-row sm:items-center gap-3 p-4 bg-white/50 backdrop-blur-sm rounded-xl border border-secondary-color/30">
+            <div class="flex items-center gap-1">
+              <div v-for="star in 5" :key="star">
+                <StarIconSolid
+                  v-if="star <= selectedProduct?.rating"
+                  class="text-star-color size-5 drop-shadow-sm"
+                />
+                <StarIcon v-else class="text-text-color/30 size-5" />
+              </div>
+            </div>
+            <div class="flex items-center gap-2">
+              <span class="text-lg font-bold text-text-color">{{ selectedProduct?.rating?.toFixed(1) }}</span>
+              <span class="text-text-color/60">•</span>
+              <span class="text-text-color/70 font-medium text-sm">{{ selectedProduct?.numReviews }} reviews</span>
+            </div>
+          </div>
 
-      <div class="grid grid-cols-2 gap-3 my-7">
-        <div class="border-[gray] border-[1px] rounded-[4px] p-3 bg-white/50">
-          <p class="mb-2 text-sm font-bold">Width</p>
-          <p class="text-xs leading-5">{{ selectedProduct?.width }}</p>
+          <!-- Price -->
+          <div class="flex items-center gap-3 p-4 bg-gradient-to-r from-primary-color/10 to-accent-color/10 rounded-xl border border-primary-color/20">
+            <div class="text-2xl md:text-3xl font-black text-primary-color font-jakarta">
+              RM {{ selectedProduct?.price }}
+            </div>
+            <div class="text-xs text-text-color/60 font-medium">
+              Free shipping
+            </div>
+          </div>
+
+          <!-- Product Specifications -->
+          <div class="grid grid-cols-2 gap-3">
+            <div class="bg-white/60 backdrop-blur-sm border border-secondary-color/30 rounded-xl p-4 group hover:bg-white/80 transition-all duration-200">
+              <div class="flex items-center gap-2 mb-2">
+                <div class="w-2 h-2 bg-gradient-to-r from-primary-color to-accent-color rounded-full"></div>
+                <span class="text-sm font-bold text-text-color">Width</span>
+              </div>
+              <p class="text-sm font-medium text-text-color/80">{{ selectedProduct?.width }}</p>
+            </div>
+            
+            <div class="bg-white/60 backdrop-blur-sm border border-secondary-color/30 rounded-xl p-4 group hover:bg-white/80 transition-all duration-200">
+              <div class="flex items-center gap-2 mb-2">
+                <div class="w-2 h-2 bg-gradient-to-r from-accent-color to-primary-color rounded-full"></div>
+                <span class="text-sm font-bold text-text-color">Height</span>
+              </div>
+              <p class="text-sm font-medium text-text-color/80">{{ selectedProduct?.height }}</p>
+            </div>
+            
+            <div class="bg-white/60 backdrop-blur-sm border border-secondary-color/30 rounded-xl p-4 group hover:bg-white/80 transition-all duration-200">
+              <div class="flex items-center gap-2 mb-2">
+                <div class="w-2 h-2 bg-gradient-to-r from-primary-color to-accent-color rounded-full"></div>
+                <span class="text-sm font-bold text-text-color">Material</span>
+              </div>
+              <p class="text-sm font-medium text-text-color/80">{{ selectedProduct?.material }}</p>
+            </div>
+            
+            <div class="bg-white/60 backdrop-blur-sm border border-secondary-color/30 rounded-xl p-4 group hover:bg-white/80 transition-all duration-200">
+              <div class="flex items-center gap-2 mb-2">
+                <div class="w-2 h-2 bg-gradient-to-r from-accent-color to-primary-color rounded-full"></div>
+                <span class="text-sm font-bold text-text-color">Stock</span>
+              </div>
+              <p class="text-sm font-bold" :class="selectedProduct?.stock ? 'text-green-600' : 'text-red-500'">
+                {{ selectedProduct?.stock ? `${selectedProduct.stock} available` : 'Out of Stock' }}
+              </p>
+            </div>
+          </div>
+
+          <!-- Add to Cart Section -->
+          <div class="bg-gradient-to-r from-white/70 to-secondary-color/25 backdrop-blur-sm rounded-2xl p-5 border border-secondary-color/30 shadow-lg">
+            <div class="space-y-4">
+              <div class="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+                <div class="flex flex-col gap-1">
+                  <label class="text-xs font-semibold text-text-color">Quantity</label>
+                  <NumberField
+                    v-model="quantity"
+                    :min="1"
+                    :max="selectedProduct?.stock"
+                    :disabled="!selectedProduct?.stock"
+                    class="w-28 border-2 border-secondary-color/50 rounded-lg focus-within:border-primary-color transition-colors duration-200"
+                  >
+                    <NumberFieldContent class="bg-white/80 rounded-lg">
+                      <NumberFieldDecrement class="text-text-color hover:text-primary-color hover:bg-secondary-color/30 transition-colors duration-200" />
+                      <NumberFieldInput class="text-center font-medium text-text-color" />
+                      <NumberFieldIncrement class="text-text-color hover:text-primary-color hover:bg-secondary-color/30 transition-colors duration-200" />
+                    </NumberFieldContent>
+                  </NumberField>
+                </div>
+
+                <Button
+                  variant="default"
+                  class="flex-1 w-full sm:w-auto h-12 bg-gradient-to-r from-primary-color to-accent-color hover:from-accent-color hover:to-primary-color text-text-color-light font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-[1.02] disabled:from-gray-400 disabled:to-gray-500 disabled:cursor-not-allowed disabled:hover:scale-100"
+                  @click="addToCart"
+                  :disabled="!selectedProduct?.stock"
+                >
+                  <span class="flex items-center gap-2 text-sm font-bold">
+                    {{ selectedProduct?.stock ? "Add To Cart" : "Out of Stock" }}
+                    <svg v-if="selectedProduct?.stock" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4m0 0L7 13m0 0l-1.1 5M7 13l-1.1-5M20 13v6a2 2 0 01-2 2H6a2 2 0 01-2-2v-6"></path>
+                    </svg>
+                  </span>
+                </Button>
+              </div>
+              
+              <div class="flex items-center gap-4 text-xs text-text-color/60">
+                <div class="flex items-center gap-1.5">
+                  <svg class="w-3 h-3 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
+                  </svg>
+                  <span>Secure checkout</span>
+                </div>
+                <div class="flex items-center gap-1.5">
+                  <svg class="w-3 h-3 text-blue-500" fill="currentColor" viewBox="0 0 20 20">
+                    <path d="M3 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V4zM3 10a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H4a1 1 0 01-1-1v-6zM14 9a1 1 0 00-1 1v6a1 1 0 001 1h2a1 1 0 001-1v-6a1 1 0 00-1-1h-2z"></path>
+                  </svg>
+                  <span>Fast delivery</span>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
-        <div class="border-[gray] border-[1px] rounded-[4px] p-3 bg-white/50">
-          <p class="mb-2 text-sm font-bold">Height</p>
-          <p class="text-xs leading-5">{{ selectedProduct?.height }}</p>
-        </div>
-        <div class="border-[gray] border-[1px] rounded-[4px] p-3 bg-white/50">
-          <p class="mb-2 text-sm font-bold">Material</p>
-          <p class="text-xs leading-5">{{ selectedProduct?.material }}</p>
-        </div>
-        <div class="border-[gray] border-[1px] rounded-[4px] p-3 bg-white/50">
-          <p class="mb-2 text-sm font-bold">Stock</p>
-          <p class="text-xs leading-5">{{ selectedProduct?.stock }}</p>
-        </div>
-      </div>
-
-      <hr class="border-[1px] border-[rgba(0,0,0,0.2)] rounded-[4px]" />
-
-      <div class="flex items-center gap-2 mt-7">
-        <NumberField
-          v-model="quantity"
-          :min="1"
-          :max="selectedProduct?.stock"
-          :disabled="!selectedProduct?.stock"
-        >
-          <NumberFieldContent>
-            <NumberFieldDecrement />
-            <NumberFieldInput />
-            <NumberFieldIncrement />
-          </NumberFieldContent>
-        </NumberField>
-
-        <Button
-          variant="default"
-          class="w-full h-[40px] py-0 text-xs"
-          @click="addToCart"
-          :disabled="!selectedProduct?.stock"
-        >
-          {{ selectedProduct?.stock ? "Add To Cart" : "Out of Stock" }}
-        </Button>
       </div>
     </div>
   </div>
