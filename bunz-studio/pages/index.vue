@@ -47,13 +47,18 @@ const trendingProducts = computed(() =>
   >
     <div class="absolute inset-0 bg-black/75"></div>
 
-    <div class="bg-center relative py-48 md:items-center md:min-h-screen h-auto">
+    <div
+      class="bg-center relative py-48 md:items-center md:min-h-screen h-auto"
+    >
       <!-- Your content goes here -->
       <div
         class="relative max-w-[1024px] mx-auto mb-[5rem] flex flex-col justify-center items-center text-center px-5 lg:px-0"
       >
         <h1 class="text-white heading-clamp">Discover Your Anime Haven</h1>
-        <p class="mt-4 text-sm md:text-base text-white max-w-[600px] md:leading-relaxed leading-relaxed">
+
+        <p
+          class="mt-4 text-sm md:text-base text-white max-w-[600px] md:leading-relaxed leading-relaxed"
+        >
           Explore our exclusive collection of anime poster cards, high-quality
           prints are a must-have for any anime fan. Browse now and find the
           perfect pieces to showcase your anime passion!
@@ -91,7 +96,7 @@ const trendingProducts = computed(() =>
                   <p
                     class="text-xs text-white border-[1px] border-slate-300 rounded-[2rem] py-1 px-3"
                   >
-                    {{ product.category || 'Anime' }}
+                    {{ product.category || "Anime" }}
                   </p>
                   <p
                     class="text-xs text-white border-[1px] border-slate-300 rounded-[2rem] py-1 px-3"
@@ -223,7 +228,9 @@ const trendingProducts = computed(() =>
         @click="isActive = isActive === 'banner-1' ? null : 'banner-1'"
       >
         <div class="banner-content-description">
-          <h2 class="text-[14px] text-text-color-light font-medium font-jakarta">
+          <h2
+            class="text-[14px] text-text-color-light font-medium font-jakarta"
+          >
             Promotions
           </h2>
           <div
@@ -243,7 +250,9 @@ const trendingProducts = computed(() =>
         @click="isActive = isActive === 'banner-2' ? null : 'banner-2'"
       >
         <div class="banner-content-description">
-          <h2 class="text-[14px] text-text-color-light font-medium font-jakarta">
+          <h2
+            class="text-[14px] text-text-color-light font-medium font-jakarta"
+          >
             New Arrival
           </h2>
           <div
@@ -263,7 +272,9 @@ const trendingProducts = computed(() =>
         @click="isActive = isActive === 'banner-3' ? null : 'banner-3'"
       >
         <div class="banner-content-description">
-          <h2 class="text-[14px] text-text-color-light font-medium font-jakarta">
+          <h2
+            class="text-[14px] text-text-color-light font-medium font-jakarta"
+          >
             Pre Order
           </h2>
           <div
