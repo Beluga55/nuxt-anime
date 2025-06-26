@@ -3,6 +3,8 @@ import * as dotenv from 'dotenv';
 
 dotenv.config();
 
+console.log('Generating Google API credentials...');
+
 const credentials = {
   type: "service_account",
   project_id: "e-commerce-anime",
@@ -17,7 +19,13 @@ const credentials = {
   universe_domain: "googleapis.com"
 }
 
-fs.writeFileSync(
-  'google-api-credentials.json',
-  JSON.stringify(credentials, null, 2)
-);
+try {
+  fs.writeFileSync(
+    'google-api-credentials.json',
+    JSON.stringify(credentials, null, 2)
+  );
+  console.log('Google API credentials generated successfully');
+} catch (error) {
+  console.error('Error generating credentials:', error);
+  process.exit(1);
+}
