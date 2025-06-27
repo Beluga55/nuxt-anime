@@ -11,6 +11,16 @@ export default () => {
           .get(`/api/orders/session/${sessionId}`)
           .then((res) => res.data);
         return orderRes;
+      }),
+    
+    fetchOrdersByUserEmail: async (email, params = {}) =>
+      apiWrapper(async () => {
+        const queryParams = new URLSearchParams(params).toString();
+        const url = `/api/orders/user/${encodeURIComponent(email)}${queryParams ? `?${queryParams}` : ''}`;
+        const orderRes = await axiosClient
+          .get(url)
+          .then((res) => res.data);
+        return orderRes;
       })
   };
 };

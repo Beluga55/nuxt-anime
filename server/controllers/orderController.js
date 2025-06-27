@@ -1,4 +1,5 @@
 import Order from "../models/Order.js";
+import User from "../models/User.js";
 
 // Get order by session ID
 export const getOrderBySessionId = async (req, res) => {
@@ -31,6 +32,97 @@ export const getOrderBySessionId = async (req, res) => {
     res.json({ order });
   } catch (error) {
     console.error("Error retrieving order:", error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
+// Get orders by user email with pagination
+export const getOrdersByUserEmail = async (req, res) => {
+  try {
+    const { email } = req.params;
+    const { page = 1, limit = 10, status, sortBy = 'datePlaced', sortOrder = 'desc' } = req.query;
+    
+    if (!email) {
+      return res.status(400).json({ error: "Email is required" });
+    }
+    
+    // Find user by email first
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+    
+    // Build query filter
+    const filter = { user: user._id };
+    if (status && status !== 'all') {
+      filter.status = status;
+    }
+    
+    // Calculate pagination
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+    
+    // Build sort object
+    const sort = {};
+    sort[sortBy] = sortOrder === 'desc' ? -1 : 1;
+    
+    // Fetch orders with pagination
+    const orders = await Order.find(filter)
+      .populate({
+        path: 'orderItems.product',
+        select: 'name price images category'
+      })
+      .sort(sort)
+      .skip(skip)
+      .limit(parseInt(limit))
+      .lean();
+    
+    // Get total count for pagination
+    const total = await Order.countDocuments(filter);
+    const totalPages = Math.ceil(total / parseInt(limit));
+    
+    // Calculate total spent
+    const totalSpent = await Order.aggregate([
+      { $match: { user: user._id } },
+      { $group: { _id: null, total: { $sum: "$totalAmount" } } }
+    ]);
+    
+    // Format response
+    const formattedOrders = orders.map(order => ({
+      id: order._id,
+      orderId: order.metadata?.order_id || order._id,
+      date: order.datePlaced,
+      status: order.status,
+      items: order.orderItems.map(item => ({
+        name: item.product?.name || 'Product not found',
+        quantity: item.qty,
+        price: item.product?.price || 0,
+        image: item.product?.images?.[0] || '',
+        category: item.product?.category || ''
+      })),
+      shippingAddress: order.shippingAddress,
+      paymentMethod: order.paymentMethod,
+      totalAmount: order.orderItems.reduce((sum, item) => 
+        sum + (item.product?.price || 0) * item.qty, 0
+      )
+    }));
+    
+    res.json({
+      orders: formattedOrders,
+      pagination: {
+        currentPage: parseInt(page),
+        totalPages,
+        totalOrders: total,
+        hasNextPage: parseInt(page) < totalPages,
+        hasPrevPage: parseInt(page) > 1
+      },
+      stats: {
+        totalSpent: totalSpent[0]?.total || 0,
+        totalOrders: total
+      }
+    });
+    
+  } catch (error) {
+    console.error("Error retrieving user orders:", error);
     res.status(500).json({ error: error.message });
   }
 };
