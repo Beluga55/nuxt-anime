@@ -91,7 +91,16 @@ const handleCheckout = async () => {
       toast({
         variant: "destructive",
         description: "Please login and try again",
-      })
+      });
+      
+      // Store checkout intent and current URL parameters in localStorage
+      localStorage.setItem('pendingCheckout', 'true');
+      if (route.query) {
+        localStorage.setItem('checkoutParams', JSON.stringify(route.query));
+      }
+      
+      // Redirect to login
+      router.push('/login');
       return;
     }
 

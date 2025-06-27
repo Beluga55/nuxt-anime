@@ -13,6 +13,9 @@ services:
     environment:
       - NODE_ENV=development
       - CHOKIDAR_USEPOLLING=true
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
     command: npm run dev
     develop:
       watch:
@@ -53,6 +56,24 @@ services:
     volumes:
       - redis_data:/data
     command: redis-server --appendonly yes
+
+  stripe-cli:
+    image: stripe/stripe-cli:latest
+    container_name: stripe-cli
+    environment:
+      - STRIPE_API_KEY=${STRIPE_SECRET_KEY}
+      - STRIPE_DEVICE_NAME=docker-dev
+    command: [
+      "listen",
+      "--api-key", "${STRIPE_SECRET_KEY}",
+      "--device-name", "docker-dev",
+      "--skip-verify",
+      "--forward-to", "http://backend:8080/api/webhooks/stripe"
+    ]
+    depends_on:
+      - backend
+    networks:
+      - default
 
 volumes:
   redis_data:

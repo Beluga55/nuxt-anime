@@ -57,8 +57,12 @@ export default {
       return;
     }
 
-    // Otherwise redirect to products page
-    useRouter().push("/products");
+    // Check for pending checkout - let the login page handle this
+    const pendingCheckout = localStorage.getItem('pendingCheckout');
+    if (!pendingCheckout) {
+      // Only redirect if there's no pending checkout
+      useRouter().push("/products");
+    }
     return loginGoogle;
   },
   async signup(data) {
@@ -95,8 +99,12 @@ export default {
 
     if (error) return error.message;
 
-    // Redirect to the products page
-    useRouter().push("/products");
+    // Check for pending checkout before redirecting
+    const pendingCheckout = localStorage.getItem('pendingCheckout');
+    if (!pendingCheckout) {
+      // Only redirect if there's no pending checkout
+      useRouter().push("/products");
+    }
 
     return verifyOtp;
   },
@@ -106,8 +114,12 @@ export default {
 
     if (error) return error.message;
 
-    // Redirect to the products page
-    useRouter().push("/products");
+    // Check for pending checkout before redirecting
+    const pendingCheckout = localStorage.getItem('pendingCheckout');
+    if (!pendingCheckout) {
+      // Only redirect if there's no pending checkout
+      useRouter().push("/products");
+    }
 
     return completeProfile;
   },

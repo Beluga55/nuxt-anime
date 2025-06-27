@@ -111,7 +111,7 @@ const viewProducts = () => {
 
 <template>
   <div
-    class="min-h-screen flex justify-center items-center p-8 bg-background-color relative overflow-hidden"
+    class="min-h-screen flex justify-center items-center p-4 sm:p-8 bg-gradient-to-br from-background-color to-secondary-color relative overflow-hidden"
   >
     <!-- Confetti animation -->
     <div
@@ -137,103 +137,142 @@ const viewProducts = () => {
     </div>
 
     <div
-      class="backdrop-filter-light max-w-[550px] w-full p-6 md:p-10 rounded-2xl text-center relative z-10 shadow-lg"
+      class="max-w-lg w-full relative z-10"
     >
-      <!-- Success icon -->
-      <div
-        class="w-20 h-20 mx-auto mb-6 bg-accent-color rounded-full flex items-center justify-center animate-pulse"
-      >
-        <CheckCircle class="w-10 h-10 text-text-color-light check-icon" />
-      </div>
-
-      <!-- Success message -->
-      <h1 class="text-4xl md:text-5xl text-primary-color mb-4">Success!</h1>
-      <p class="text-xl text-text-color mb-2 font-semibold">
-        Your order has been successfully processed.
-      </p>
-      <p class="text-text-color opacity-80 mb-8">
-        Thank you for shopping with us. You will receive a confirmation email
-        shortly.
-      </p>
-
-      <!-- Order details summary -->
-      <div
-        class="bg-background-color bg-opacity-70 p-6 rounded-xl mb-8 text-left"
-      >
-        <h2
-          class="text-lg mb-5 text-text-color mb-4 text-left font-jakarta font-bold"
-        >
-          Order Summary
-        </h2>
-        <div
-          class="flex justify-between mb-3 pb-3 border-b border-secondary-color"
-        >
-          <span>Order ID:</span>
-          <span>#{{ orderId }}</span>
-        </div>
-        <div
-          class="flex justify-between mb-3 pb-3 border-b border-secondary-color"
-        >
-          <span>Date:</span>
-          <span>{{
-            order
-              ? new Date(order.datePlaced).toLocaleDateString()
-              : new Date().toLocaleDateString()
-          }}</span>
-        </div>
-
-        <!-- Loading state -->
-        <div v-if="isLoading" class="py-4 text-center">
-          <p class="text-text-color opacity-70">Loading order details...</p>
-        </div>
-
-        <!-- Error state -->
-        <div v-else-if="error" class="py-4 text-center">
-          <p class="text-red-500">{{ error }}</p>
-        </div>
-
-        <!-- Display order items if available -->
-        <div
-          v-else-if="order && order.orderItems && order.orderItems.length > 0"
-          class="mt-4 mb-4"
-        >
-          <h3 class="text-md font-bold mb-3 font-jakarta">Items:</h3>
-          <div
-            v-for="(item, index) in order.orderItems"
-            :key="index"
-            class="flex justify-between mb-2 text-sm"
-          >
-            <span>{{ item.product.name }} x{{ item.qty }}</span>
-            <span>RM {{ (item.product.price * item.qty).toFixed(2) }}</span>
+      <!-- Main Success Card -->
+      <div class="bg-gradient-to-br from-white/95 to-white/80 backdrop-blur-3xl rounded-2xl shadow-2xl border border-white/30 overflow-hidden">
+        <!-- Header Section with Success Icon -->
+        <div class="bg-gradient-to-r from-primary-color/10 to-accent-color/10 p-6 text-center relative">
+          <!-- Decorative circles -->
+          <div class="absolute top-3 right-3 w-16 h-16 bg-primary-color/5 rounded-full"></div>
+          <div class="absolute bottom-2 left-3 w-10 h-10 bg-accent-color/5 rounded-full"></div>
+          
+          <!-- Success icon with enhanced styling -->
+          <div class="relative">
+            <div class="w-20 h-20 mx-auto mb-4 bg-gradient-to-br from-primary-color/20 to-accent-color/20 rounded-full flex items-center justify-center shadow-lg border border-primary-color/30">
+              <div class="w-16 h-16 bg-gradient-to-br from-primary-color/30 to-accent-color/30 rounded-full flex items-center justify-center">
+                <CheckCircle class="w-10 h-10 text-primary-color check-icon drop-shadow-sm" />
+              </div>
+            </div>
           </div>
-          <div
-            class="flex justify-between mt-4 pt-3 border-t border-secondary-color font-bold"
-          >
-            <span>Total:</span>
-            <span>RM {{ totalAmount }}</span>
+
+          <!-- Success message -->
+          <h1 class="text-2xl font-black text-text-color mb-2 font-jakarta">Payment Successful!</h1>
+          <p class="text-sm text-text-color/70 leading-relaxed">
+            Thank you for your purchase! A confirmation has been sent to your email.
+          </p>
+        </div>
+
+        <!-- Order Summary Card -->
+        <div class="p-6">
+          <div class="bg-gradient-to-br from-white/60 to-secondary-color/20 backdrop-blur-sm border border-secondary-color/30 rounded-xl p-4 mb-6">
+            <div class="flex items-center gap-3 mb-4">
+              <div class="w-2 h-2 bg-gradient-to-r from-primary-color to-accent-color rounded-full"></div>
+              <h2 class="text-lg font-bold text-text-color font-jakarta">Order Summary</h2>
+            </div>
+
+            <!-- Order Info Grid -->
+            <div class="grid grid-cols-2 gap-3 mb-4">
+              <div class="bg-white/60 backdrop-blur-sm border border-secondary-color/30 rounded-lg p-3">
+                <div class="text-center">
+                  <span class="text-xs font-semibold text-text-color/70 block mb-1">Order ID</span>
+                  <span class="font-mono text-sm font-bold text-primary-color">#{{ orderId }}</span>
+                </div>
+              </div>
+              <div class="bg-white/60 backdrop-blur-sm border border-secondary-color/30 rounded-lg p-3">
+                <div class="text-center">
+                  <span class="text-xs font-semibold text-text-color/70 block mb-1">Date</span>
+                  <span class="text-sm font-bold text-text-color">{{
+                    order
+                      ? new Date(order.datePlaced).toLocaleDateString()
+                      : new Date().toLocaleDateString()
+                  }}</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Loading state -->
+            <div v-if="isLoading" class="py-6 text-center">
+              <div class="animate-spin rounded-full h-6 w-6 border-2 border-primary-color border-t-transparent mx-auto mb-3"></div>
+              <p class="text-text-color/70 font-medium text-sm">Loading order details...</p>
+            </div>
+
+            <!-- Error state -->
+            <div v-else-if="error" class="py-6 text-center">
+              <div class="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                <svg class="w-5 h-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+              </div>
+              <p class="text-red-500 font-medium text-sm">{{ error }}</p>
+            </div>
+
+            <!-- Order items -->
+            <div v-else-if="order && order.orderItems && order.orderItems.length > 0">
+              <div class="border-t border-secondary-color/30 my-4"></div>
+              <h3 class="text-md font-bold text-text-color mb-3 font-jakarta">Items Ordered</h3>
+              <div class="space-y-2">
+                <div
+                  v-for="(item, index) in order.orderItems"
+                  :key="index"
+                  class="bg-white/80 backdrop-blur-sm border border-secondary-color/30 rounded-lg p-3 flex justify-between items-center hover:bg-white/90 transition-all duration-200"
+                >
+                  <div class="flex items-center gap-2">
+                    <div class="w-1.5 h-1.5 bg-primary-color rounded-full"></div>
+                    <span class="font-medium text-text-color text-sm">{{ item.product.name }}</span>
+                    <span class="bg-secondary-color/30 text-text-color/70 px-2 py-0.5 rounded-full text-xs font-bold">x{{ item.qty }}</span>
+                  </div>
+                  <span class="font-bold text-primary-color text-sm">RM {{ (item.product.price * item.qty).toFixed(2) }}</span>
+                </div>
+              </div>
+              
+              <!-- Total Section -->
+              <div class="border-t border-secondary-color/30 my-4"></div>
+              <div class="bg-gradient-to-r from-primary-color/10 to-accent-color/10 rounded-lg p-3">
+                <div class="flex justify-between items-center">
+                  <span class="text-md font-bold text-text-color font-jakarta">Total Amount</span>
+                  <span class="text-xl font-black text-primary-color font-jakarta">RM {{ totalAmount }}</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- No items state -->
+            <div v-else class="py-6 text-center">
+              <div class="w-10 h-10 bg-secondary-color/30 rounded-full flex items-center justify-center mx-auto mb-3">
+                <svg class="w-5 h-5 text-text-color/50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"></path>
+                </svg>
+              </div>
+              <p class="text-text-color/70 font-medium text-sm">No items found in this order.</p>
+            </div>
+          </div>
+
+          <!-- Action buttons -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <button
+              @click="viewProducts"
+              class="bg-gradient-to-r from-primary-color to-accent-color hover:from-accent-color hover:to-primary-color text-white font-bold py-3 px-6 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-[1.02] focus:outline-none focus:ring-4 focus:ring-primary-color/30"
+            >
+              <span class="flex items-center justify-center gap-2">
+                Continue Shopping
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"></path>
+                </svg>
+              </span>
+            </button>
+            <button
+              @click="goToHome"
+              class="bg-white/80 backdrop-blur-sm border-2 border-secondary-color/50 hover:border-primary-color/50 text-text-color font-bold py-3 px-6 rounded-xl hover:bg-white/90 transition-all duration-300 transform hover:scale-[1.02] focus:outline-none focus:ring-4 focus:ring-secondary-color/30"
+            >
+              <span class="flex items-center justify-center gap-2">
+                Back to Home
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path>
+                </svg>
+              </span>
+            </button>
           </div>
         </div>
-
-        <!-- No items state -->
-        <div v-else class="py-4 text-center">
-          <p class="text-text-color opacity-70">No items in this order.</p>
-        </div>
-      </div>
-
-      <!-- Action buttons -->
-      <div class="flex gap-4 mb-6 justify-center flex-col md:flex-row">
-        <button
-          @click="viewProducts"
-          class="px-6 py-3 rounded-lg font-semibold transition-all duration-300 hover:translate-y-[-2px] bg-transparent text-primary-color border border-primary-color hover:bg-secondary-color"
-        >
-          Continue Shopping
-        </button>
-        <button
-          @click="goToHome"
-          class="px-6 py-3 rounded-lg font-semibold transition-all duration-300 hover:translate-y-[-2px] bg-primary-color text-text-color-light border-none hover:bg-accent-color"
-        >
-          Back to Home
-        </button>
       </div>
     </div>
   </div>

@@ -17,14 +17,32 @@ import nahida from "@/assets/images/nahida.png";
 import { useAuthStore } from "~/store/auth";
 import { useToast } from "@/components/ui/toast/use-toast";
 import { useTokenStatus } from "@/composables/useTokenStatus";
-import { useRouter } from "vue-router";
+import { useRouter, useRoute } from "vue-router";
+import { useCartStore } from "@/store/cart";
+import { usePaymentStore } from "~/store/payment";
+import { loadStripe } from "@stripe/stripe-js";
 
 // Get the window size
 const rememberMe = ref(false);
 const router = useRouter();
+const route = useRoute();
 const authStore = useAuthStore();
+const cartStore = useCartStore();
+const paymentStore = usePaymentStore();
 const { toast, dismiss } = useToast();
 const { setTokenStatus, tokenStatus } = useTokenStatus(); // Initialize the setTokenStatus function
+
+// Check if user was redirected here for checkout
+onMounted(() => {
+  const pendingCheckout = localStorage.getItem('pendingCheckout');
+  if (pendingCheckout === 'true') {
+    toast({
+      variant: "default",
+      title: "Login Required",
+      description: "Please login to proceed with checkout",
+    });
+  }
+});
 
 // Validation Schema for the form (email, password)
 const validationSchema = toTypedSchema(
@@ -71,7 +89,19 @@ const handleLogin = handleSubmit(async () => {
     await authStore.login(body);
     setTokenStatus(true); // Set token status to true after successful login
 
-    router.push("/products");
+    // Check for pending checkout
+    const pendingCheckout = localStorage.getItem('pendingCheckout');
+    
+    if (pendingCheckout === 'true') {
+      // Clear the pending checkout flags
+      localStorage.removeItem('pendingCheckout');
+      localStorage.removeItem('checkoutParams');
+      
+      // Trigger checkout process directly
+      await handlePostLoginCheckout();
+    } else {
+      router.push("/products");
+    }
   } catch (error) {
     toast({
       variant: "destructive",
@@ -102,6 +132,19 @@ const handleOnSuccess = async (response: AuthCodeFlowSuccessResponse) => {
   // Can store the user info into the database
   try {
     await authStore.loginGoogle(data);
+    setTokenStatus(true);
+    
+    // Check for pending checkout after Google login
+    const pendingCheckout = localStorage.getItem('pendingCheckout');
+    
+    if (pendingCheckout === 'true') {
+      // Clear the pending checkout flags
+      localStorage.removeItem('pendingCheckout');
+      localStorage.removeItem('checkoutParams');
+      
+      // Trigger checkout process directly
+      await handlePostLoginCheckout();
+    }
   } catch (error) {
     toast({
       variant: "destructive",
@@ -122,6 +165,46 @@ const { isReady, login } = useTokenClient({
   onSuccess: handleOnSuccess,
   onError: handleOnError,
 });
+
+// Handle checkout process after successful login
+const handlePostLoginCheckout = async () => {
+  try {
+    // Transform cart items to Stripe format
+    const items = cartStore.cartItems.map((item) => ({
+      name: item.name,
+      amount: Math.round(item.price * 100), // Convert to cents
+      quantity: item.quantity || 1,
+      image: item.imageUrl || item.image,
+      description: item.description,
+    }));
+
+    const userData = localStorage.getItem("userInfo");
+    if (!userData) {
+      throw new Error("User data not found");
+    }
+    const user = JSON.parse(userData);
+    const email = user.email;
+
+    const response = await paymentStore.createCheckoutSession({
+      items,
+      email,
+    });
+
+    if (response && response.session) {
+      const config = useRuntimeConfig();
+      const stripe = await loadStripe(config.public.stripePublishableKey);
+      await stripe.redirectToCheckout({
+        sessionId: response.session.id,
+      });
+    }
+  } catch (err) {
+    console.error("Error during post-login checkout:", err);
+    toast({
+      variant: "destructive",
+      description: "Unable to proceed to checkout. Please try again.",
+    });
+  }
+};
 </script>
 
 <template>

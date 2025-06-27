@@ -362,7 +362,7 @@ const loadMore = async () => {
           <!-- Add to Cart Section -->
           <div class="bg-gradient-to-r from-white/70 to-secondary-color/25 backdrop-blur-sm rounded-2xl p-5 border border-secondary-color/30 shadow-lg">
             <div class="space-y-4">
-              <div class="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+              <div class="flex items-end gap-4">
                 <div class="flex flex-col gap-1">
                   <label class="text-xs font-semibold text-text-color">Quantity</label>
                   <NumberField
@@ -382,7 +382,7 @@ const loadMore = async () => {
 
                 <Button
                   variant="default"
-                  class="flex-1 w-full sm:w-auto h-12 bg-gradient-to-r from-primary-color to-accent-color hover:from-accent-color hover:to-primary-color text-text-color-light font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-[1.02] disabled:from-gray-400 disabled:to-gray-500 disabled:cursor-not-allowed disabled:hover:scale-100"
+                  class="flex-1 h-12 bg-gradient-to-r from-primary-color to-accent-color hover:from-accent-color hover:to-primary-color text-text-color-light font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-[1.02] disabled:from-gray-400 disabled:to-gray-500 disabled:cursor-not-allowed disabled:hover:scale-100"
                   @click="addToCart"
                   :disabled="!selectedProduct?.stock"
                 >
