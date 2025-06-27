@@ -14,8 +14,10 @@ export const createCheckoutSession = async (req, res) => {
   try {
     const { items, email } = req.body;
     
-    // Generate a unique order ID
-    const orderId = Math.floor(Math.random() * 1000000).toString().padStart(6, "0");
+    // Generate a unique order ID with timestamp + random number
+    const timestamp = Date.now().toString().slice(-6); // Last 6 digits of timestamp
+    const randomNum = Math.floor(Math.random() * 1000).toString().padStart(3, "0");
+    const orderId = timestamp + randomNum;
     
     // Encode items data to pass in URL (limited to essential info)
     const itemsData = encodeURIComponent(JSON.stringify(
@@ -186,7 +188,11 @@ export const handleStripeWebhook = async (req, res) => {
               status: 'Paid', // Since payment is confirmed
               metadata: {
                 session_id: session.id,
-                order_id: session.metadata?.order_id || Math.floor(Math.random() * 1000000).toString().padStart(6, "0")
+                order_id: session.metadata?.order_id || (() => {
+                  const timestamp = Date.now().toString().slice(-6);
+                  const randomNum = Math.floor(Math.random() * 1000).toString().padStart(3, "0");
+                  return timestamp + randomNum;
+                })()
               }
             });
             

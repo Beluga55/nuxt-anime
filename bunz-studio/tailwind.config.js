@@ -17,6 +17,7 @@ module.exports = {
     extend: {
       fontFamily: {
         jakarta: ['Plus Jakarta Sans', 'sans-serif'],
+        dashboard: ['Manrope', 'sans-serif'],
       },
       colors: { 
         "primary-color": "#fd7968",

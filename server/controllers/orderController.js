@@ -1,5 +1,6 @@
 import Order from "../models/Order.js";
 import User from "../models/User.js";
+import { getProductsImage } from "./getImagesFromCloud.js";
 
 // Get order by session ID
 export const getOrderBySessionId = async (req, res) => {
@@ -16,7 +17,7 @@ export const getOrderBySessionId = async (req, res) => {
       "metadata.session_id": sessionId 
     }).populate({
       path: 'orderItems.product',
-      select: 'name price images'
+      select: 'name price image'
     });
 
     console.log(order);
@@ -29,7 +30,31 @@ export const getOrderBySessionId = async (req, res) => {
       });
     }
     
-    res.json({ order });
+    // Format order with signed image URLs
+    const formattedOrder = {
+      ...order.toObject(),
+      orderItems: await Promise.all(order.orderItems.map(async (item) => {
+        let imageUrl = '';
+        try {
+          if (item.product?.image) {
+            imageUrl = await getProductsImage(item.product.image);
+          }
+        } catch (error) {
+          console.error(`Error getting image for product ${item.product?.name}:`, error);
+          imageUrl = '';
+        }
+        
+        return {
+          ...item.toObject(),
+          product: item.product ? {
+            ...item.product.toObject(),
+            image: imageUrl
+          } : null
+        };
+      }))
+    };
+    
+    res.json({ order: formattedOrder });
   } catch (error) {
     console.error("Error retrieving order:", error);
     res.status(500).json({ error: error.message });
@@ -69,7 +94,7 @@ export const getOrdersByUserEmail = async (req, res) => {
     const orders = await Order.find(filter)
       .populate({
         path: 'orderItems.product',
-        select: 'name price images category'
+        select: 'name price image category'
       })
       .sort(sort)
       .skip(skip)
@@ -80,31 +105,87 @@ export const getOrdersByUserEmail = async (req, res) => {
     const total = await Order.countDocuments(filter);
     const totalPages = Math.ceil(total / parseInt(limit));
     
-    // Calculate total spent
+    // Calculate total spent by joining with products and summing price * qty
     const totalSpent = await Order.aggregate([
       { $match: { user: user._id } },
-      { $group: { _id: null, total: { $sum: "$totalAmount" } } }
+      { $unwind: "$orderItems" },
+      { 
+        $lookup: {
+          from: "products",
+          localField: "orderItems.product",
+          foreignField: "_id",
+          as: "productDetails"
+        }
+      },
+      { $unwind: "$productDetails" },
+      {
+        $group: {
+          _id: null,
+          total: { 
+            $sum: { 
+              $multiply: ["$productDetails.price", "$orderItems.qty"] 
+            }
+          }
+        }
+      }
     ]);
     
-    // Format response
-    const formattedOrders = orders.map(order => ({
-      id: order._id,
-      orderId: order.metadata?.order_id || order._id,
-      date: order.datePlaced,
-      status: order.status,
-      items: order.orderItems.map(item => ({
-        name: item.product?.name || 'Product not found',
-        quantity: item.qty,
-        price: item.product?.price || 0,
-        image: item.product?.images?.[0] || '',
-        category: item.product?.category || ''
-      })),
-      shippingAddress: order.shippingAddress,
-      paymentMethod: order.paymentMethod,
-      totalAmount: order.orderItems.reduce((sum, item) => 
-        sum + (item.product?.price || 0) * item.qty, 0
-      )
-    }));
+    // Format response with signed image URLs
+    let formattedOrders;
+    try {
+      formattedOrders = await Promise.all(orders.map(async (order) => ({
+        id: order._id,
+        orderId: order.metadata?.order_id || order._id,
+        date: order.datePlaced,
+        status: order.status,
+        items: await Promise.all(order.orderItems.map(async (item) => {
+          let imageUrl = '';
+          try {
+            if (item.product?.image) {
+              imageUrl = await getProductsImage(item.product.image);
+            }
+          } catch (error) {
+            console.error(`Error getting image for product ${item.product?.name}:`, error);
+            // Fallback to filename if image processing fails
+            imageUrl = item.product?.image || '';
+          }
+          
+          return {
+            name: item.product?.name || 'Product not found',
+            quantity: item.qty,
+            price: item.product?.price || 0,
+            image: imageUrl,
+            category: item.product?.category || ''
+          };
+        })),
+        shippingAddress: order.shippingAddress,
+        paymentMethod: order.paymentMethod,
+        totalAmount: order.orderItems.reduce((sum, item) => 
+          sum + (item.product?.price || 0) * item.qty, 0
+        )
+      })));
+    } catch (error) {
+      console.error('Error processing order images, falling back to basic order data:', error);
+      // Fallback: return orders without processed images
+      formattedOrders = orders.map(order => ({
+        id: order._id,
+        orderId: order.metadata?.order_id || order._id,
+        date: order.datePlaced,
+        status: order.status,
+        items: order.orderItems.map(item => ({
+          name: item.product?.name || 'Product not found',
+          quantity: item.qty,
+          price: item.product?.price || 0,
+          image: item.product?.image || '',
+          category: item.product?.category || ''
+        })),
+        shippingAddress: order.shippingAddress,
+        paymentMethod: order.paymentMethod,
+        totalAmount: order.orderItems.reduce((sum, item) => 
+          sum + (item.product?.price || 0) * item.qty, 0
+        )
+      }));
+    }
     
     res.json({
       orders: formattedOrders,

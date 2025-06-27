@@ -25,7 +25,7 @@ const orderSchema = new mongoose.Schema({
   status: { type: String, default: 'Pending' },
   metadata: {
     session_id: { type: String },
-    order_id: { type: String }
+    order_id: { type: String, unique: true, sparse: true }
   }
 });
 
