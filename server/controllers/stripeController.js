@@ -3,6 +3,7 @@ import * as dotenv from "dotenv";
 import Order from "../models/Order.js";
 import User from "../models/User.js";
 import Product from "../models/Product.js";
+import emailService from "../services/emailService.js";
 
 dotenv.config();
 
@@ -199,7 +200,50 @@ export const handleStripeWebhook = async (req, res) => {
             await order.save();
             console.log(`Order saved to database: ${order._id}`);
             
-            // Here you could also send confirmation email to customer
+            // Send order confirmation email
+            try {
+              // Prepare order data for email
+              const orderDataForEmail = {
+                orderId: order.metadata.order_id,
+                customerName: user?.username || customerEmail.split('@')[0],
+                date: order.datePlaced,
+                totalAmount: orderItems.reduce((sum, item) => {
+                  const product = orderItems.find(oi => oi.product.toString() === item.product.toString());
+                  return sum + (product ? lineItems.find(li => li.description === product.name)?.amount_total / 100 || 0 : 0);
+                }, 0),
+                items: await Promise.all(orderItems.map(async (item) => {
+                  const product = await Product.findById(item.product);
+                  const lineItem = lineItems.find(li => li.description === product?.name);
+                  return {
+                    name: product?.name || 'Unknown Product',
+                    quantity: item.qty,
+                    price: lineItem ? lineItem.amount_total / 100 / item.qty : 0
+                  };
+                })),
+                shippingAddress
+              };
+              
+              // Get user's email preferences (fallback to default if not found)
+              const userPreferences = user?.emailPreferences || { orderUpdates: true };
+              
+              // Send the email
+              const emailResult = await emailService.sendOrderConfirmation(
+                customerEmail, 
+                orderDataForEmail, 
+                userPreferences
+              );
+              
+              if (emailResult.success) {
+                console.log(`Order confirmation email sent to ${customerEmail}`);
+              } else if (emailResult.skipped) {
+                console.log(`Order confirmation email skipped for ${customerEmail} (disabled in preferences)`);
+              } else {
+                console.error(`Failed to send order confirmation email to ${customerEmail}:`, emailResult.error);
+              }
+            } catch (emailError) {
+              console.error('Error sending order confirmation email:', emailError);
+              // Don't fail the order creation if email fails
+            }
             
           } catch (error) {
             console.error(`Error saving order to database: ${error.message}`);

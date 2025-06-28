@@ -20,6 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import Toggle from "@/components/ui/toggle/Toggle.vue";
 
 definePageMeta({
   layout: "dashboard-layout",
@@ -54,6 +55,19 @@ const editForm = ref({
 
 // Phone input specific reactive data
 const selectedCountry = ref("");
+
+// Email preferences data
+const emailPreferences = ref({
+  orderUpdates: true,
+  marketing: false,
+  supportUpdates: true,
+  securityAlerts: true,
+  newsletter: false,
+  promotions: false,
+});
+
+const emailLoading = ref(false);
+const testEmailLoading = ref('');
 
 const statusOptions = [
   { value: 'all', label: 'All Orders' },
@@ -213,6 +227,90 @@ const handleImageError = (itemName) => {
   failedImages.value.add(itemName);
 };
 
+// Email preferences methods
+const fetchEmailPreferences = async () => {
+  if (!userInfo?.value?.email) return;
+  
+  try {
+    emailLoading.value = true;
+    const response = await $fetch(`http://localhost:8080/api/users/preferences/${userInfo.value.email}`);
+    emailPreferences.value = response.emailPreferences;
+  } catch (error) {
+    console.error('Error fetching email preferences:', error);
+    toast({
+      variant: "destructive",
+      description: "Failed to load email preferences",
+    });
+  } finally {
+    emailLoading.value = false;
+  }
+};
+
+const updateEmailPreferences = async (preferenceKey, value) => {
+  if (!userInfo?.value?.email) return;
+  
+  try {
+    emailLoading.value = true;
+    
+    const updatedPreferences = {
+      ...emailPreferences.value,
+      [preferenceKey]: value
+    };
+    
+    const response = await $fetch(`http://localhost:8080/api/users/preferences/${userInfo.value.email}`, {
+      method: 'PUT',
+      body: { emailPreferences: updatedPreferences }
+    });
+    
+    emailPreferences.value = response.emailPreferences;
+    
+    toast({
+      description: "Email preferences updated successfully",
+    });
+  } catch (error) {
+    console.error('Error updating email preferences:', error);
+    toast({
+      variant: "destructive",
+      description: "Failed to update email preferences",
+    });
+    // Revert the change on error
+    fetchEmailPreferences();
+  } finally {
+    emailLoading.value = false;
+  }
+};
+
+const sendTestEmail = async (emailType) => {
+  if (!userInfo?.value?.email) return;
+  
+  try {
+    testEmailLoading.value = emailType;
+    
+    const response = await $fetch(`http://localhost:8080/api/users/test-email/${userInfo.value.email}`, {
+      method: 'POST',
+      body: { emailType }
+    });
+    
+    if (response.skipped) {
+      toast({
+        description: `Test ${emailType} email was skipped (disabled in preferences)`,
+      });
+    } else {
+      toast({
+        description: `Test ${emailType} email sent successfully`,
+      });
+    }
+  } catch (error) {
+    console.error('Error sending test email:', error);
+    toast({
+      variant: "destructive",
+      description: "Failed to send test email",
+    });
+  } finally {
+    testEmailLoading.value = '';
+  }
+};
+
 // Watch for section changes
 watch(activeSection, (newSection) => {
   if (newSection === 'orders' && userInfo?.value?.email) {
@@ -220,6 +318,8 @@ watch(activeSection, (newSection) => {
   } else if (newSection === 'overview' && userInfo?.value?.email) {
     // Fetch recent orders for overview section
     fetchUserOrders({ limit: 5 });
+  } else if (newSection === 'settings' && userInfo?.value?.email) {
+    fetchEmailPreferences();
   }
 });
 
@@ -627,47 +727,192 @@ onMounted(() => {
     <!-- Settings Section -->
     <div v-else-if="activeSection === 'settings'" class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
       <div class="mb-6">
-        <h1 class="text-2xl font-bold text-text-color-dark font-dashboard">Preferences</h1>
-        <p class="text-gray-600 mt-1">Customize your account settings and preferences</p>
+        <h1 class="text-2xl font-bold text-text-color-dark font-dashboard">Email Preferences</h1>
+        <p class="text-gray-600 mt-1">Customize your email notifications and marketing preferences</p>
       </div>
       
-      <div class="space-y-6">
+      <!-- Loading State -->
+      <div v-if="emailLoading" class="flex items-center justify-center py-8">
+        <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-primary-color"></div>
+      </div>
+      
+      <div v-else class="space-y-8">
+        <!-- Email Notifications -->
         <div>
-          <h3 class="text-lg font-medium text-gray-900 mb-3 font-dashboard">Notifications</h3>
-          <div class="space-y-3">
-            <div class="flex items-center justify-between">
-              <div>
-                <p class="font-medium">Email Notifications</p>
-                <p class="text-sm text-gray-600">Receive order updates via email</p>
+          <h3 class="text-lg font-medium text-gray-900 mb-4 font-dashboard">Email Notifications</h3>
+          <div class="space-y-4">
+            <div class="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+              <div class="flex-1">
+                <div class="flex items-center space-x-2">
+                  <EnvelopeIcon class="w-5 h-5 text-primary-color" />
+                  <p class="font-medium text-gray-900">Order Updates</p>
+                </div>
+                <p class="text-sm text-gray-600 mt-1">Receive confirmations, shipping updates, and delivery notifications</p>
               </div>
-              <input type="checkbox" class="h-4 w-4 text-primary-color focus:ring-primary-color border-gray-300 rounded" checked />
+              <div class="flex items-center space-x-3">
+                <Button
+                  @click="sendTestEmail('order')"
+                  :disabled="testEmailLoading === 'order' || !emailPreferences.orderUpdates"
+                  variant="outline"
+                  size="sm"
+                  class="text-xs"
+                >
+                  {{ testEmailLoading === 'order' ? 'Sending...' : 'Test' }}
+                </Button>
+                <Toggle
+                  :model-value="emailPreferences.orderUpdates"
+                  @update:model-value="(value) => updateEmailPreferences('orderUpdates', value)"
+                  :disabled="emailLoading"
+                />
+              </div>
             </div>
-            <div class="flex items-center justify-between">
-              <div>
-                <p class="font-medium">Marketing Emails</p>
-                <p class="text-sm text-gray-600">Receive promotional emails and offers</p>
+            
+            <div class="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+              <div class="flex-1">
+                <div class="flex items-center space-x-2">
+                  <QuestionMarkCircleIcon class="w-5 h-5 text-blue-500" />
+                  <p class="font-medium text-gray-900">Support Updates</p>
+                </div>
+                <p class="text-sm text-gray-600 mt-1">Get notified when we respond to your support requests</p>
               </div>
-              <input type="checkbox" class="h-4 w-4 text-primary-color focus:ring-primary-color border-gray-300 rounded" />
+              <div class="flex items-center space-x-3">
+                <Button
+                  @click="sendTestEmail('support')"
+                  :disabled="testEmailLoading === 'support' || !emailPreferences.supportUpdates"
+                  variant="outline"
+                  size="sm"
+                  class="text-xs"
+                >
+                  {{ testEmailLoading === 'support' ? 'Sending...' : 'Test' }}
+                </Button>
+                <Toggle
+                  :model-value="emailPreferences.supportUpdates"
+                  @update:model-value="(value) => updateEmailPreferences('supportUpdates', value)"
+                  :disabled="emailLoading"
+                />
+              </div>
+            </div>
+            
+            <div class="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+              <div class="flex-1">
+                <div class="flex items-center space-x-2">
+                  <svg class="w-5 h-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                  </svg>
+                  <p class="font-medium text-gray-900">Security Alerts</p>
+                </div>
+                <p class="text-sm text-gray-600 mt-1">Important account security notifications and login alerts</p>
+              </div>
+              <Toggle
+                :model-value="emailPreferences.securityAlerts"
+                @update:model-value="(value) => updateEmailPreferences('securityAlerts', value)"
+                :disabled="emailLoading"
+              />
             </div>
           </div>
         </div>
         
+        <!-- Marketing & Promotions -->
         <div>
-          <h3 class="text-lg font-medium text-gray-900 mb-3 font-dashboard">Language & Region</h3>
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-2">Language</label>
-              <select class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-color">
-                <option>English</option>
-                <option>Bahasa Malaysia</option>
-              </select>
+          <h3 class="text-lg font-medium text-gray-900 mb-4 font-dashboard">Marketing & Promotions</h3>
+          <div class="space-y-4">
+            <div class="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+              <div class="flex-1">
+                <div class="flex items-center space-x-2">
+                  <svg class="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
+                  </svg>
+                  <p class="font-medium text-gray-900">Marketing Emails</p>
+                </div>
+                <p class="text-sm text-gray-600 mt-1">Product updates, special offers, and promotional content</p>
+              </div>
+              <div class="flex items-center space-x-3">
+                <Button
+                  @click="sendTestEmail('marketing')"
+                  :disabled="testEmailLoading === 'marketing' || !emailPreferences.marketing"
+                  variant="outline"
+                  size="sm"
+                  class="text-xs"
+                >
+                  {{ testEmailLoading === 'marketing' ? 'Sending...' : 'Test' }}
+                </Button>
+                <Toggle
+                  :model-value="emailPreferences.marketing"
+                  @update:model-value="(value) => updateEmailPreferences('marketing', value)"
+                  :disabled="emailLoading"
+                />
+              </div>
             </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-2">Currency</label>
-              <select class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-color">
-                <option>MYR (RM)</option>
-                <option>USD ($)</option>
-              </select>
+            
+            <div class="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+              <div class="flex-1">
+                <div class="flex items-center space-x-2">
+                  <svg class="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z" />
+                  </svg>
+                  <p class="font-medium text-gray-900">Newsletter</p>
+                </div>
+                <p class="text-sm text-gray-600 mt-1">Monthly newsletters with anime updates and community highlights</p>
+              </div>
+              <Toggle
+                :model-value="emailPreferences.newsletter"
+                @update:model-value="(value) => updateEmailPreferences('newsletter', value)"
+                :disabled="emailLoading"
+              />
+            </div>
+            
+            <div class="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+              <div class="flex-1">
+                <div class="flex items-center space-x-2">
+                  <svg class="w-5 h-5 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
+                  </svg>
+                  <p class="font-medium text-gray-900">Special Promotions</p>
+                </div>
+                <p class="text-sm text-gray-600 mt-1">Exclusive deals, flash sales, and limited-time offers</p>
+              </div>
+              <Toggle
+                :model-value="emailPreferences.promotions"
+                @update:model-value="(value) => updateEmailPreferences('promotions', value)"
+                :disabled="emailLoading"
+              />
+            </div>
+          </div>
+        </div>
+        
+        <!-- Email Management -->
+        <div class="border-t pt-6">
+          <h3 class="text-lg font-medium text-gray-900 mb-4 font-dashboard">Email Management</h3>
+          <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <div class="flex items-start space-x-3">
+              <svg class="w-5 h-5 text-blue-500 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <div class="flex-1">
+                <h4 class="font-medium text-blue-900" style="font-family: 'Manrope', sans-serif;">Email Delivery Information</h4>
+                <p class="text-sm text-blue-700 mt-1" style="font-family: 'Manrope', sans-serif;">
+                  All marketing emails include an unsubscribe link. You can also update your preferences anytime by visiting this page.
+                  Security alerts cannot be disabled for account safety.
+                </p>
+                <div class="mt-3 flex flex-wrap gap-2">
+                  <Button
+                    @click="sendTestEmail('order')"
+                    :disabled="testEmailLoading !== ''"
+                    variant="outline"
+                    size="sm"
+                  >
+                    {{ testEmailLoading === 'order' ? 'Sending...' : 'Test Order Email' }}
+                  </Button>
+                  <Button
+                    @click="sendTestEmail('marketing')"
+                    :disabled="testEmailLoading !== ''"
+                    variant="outline"
+                    size="sm"
+                  >
+                    {{ testEmailLoading === 'marketing' ? 'Sending...' : 'Test Marketing Email' }}
+                  </Button>
+                </div>
+              </div>
             </div>
           </div>
         </div>

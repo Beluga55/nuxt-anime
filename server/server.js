@@ -7,6 +7,7 @@ import supportRoutes from "./routes/supportRoutes.js";
 import authRoutes from "./routes/authRoutes.js";
 import stripeRoutes from "./routes/stripeRoutes.js";
 import orderRoutes from "./routes/orderRoutes.js";
+import userPreferencesRoutes from "./routes/userPreferencesRoutes.js";
 import { stripeWebhookMiddleware } from "./middleware/stripeWebhookMiddleware.js";
 
 const app = express();
@@ -21,6 +22,7 @@ app.use("/support", supportRoutes);
 app.use("/auth", authRoutes);
 app.use("/api", stripeRoutes);
 app.use("/api/orders", orderRoutes);
+app.use("/api/users", userPreferencesRoutes);
 
 const port = 8080;
 
