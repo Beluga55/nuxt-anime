@@ -24,4 +24,7 @@ export default defineNuxtConfig({
   particles: {
     mode: "full",
   },
+  build: {
+    transpile: ["reka-ui"]
+  },
 });

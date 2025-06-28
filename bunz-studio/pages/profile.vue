@@ -13,6 +13,13 @@ import {
 import { VueTelInput } from 'vue-tel-input';
 import { useOrderStore } from "~/store/order";
 import { useToast } from "@/components/ui/toast/use-toast";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 definePageMeta({
   layout: "dashboard-layout",
@@ -160,10 +167,12 @@ const fetchUserOrders = async (params = {}) => {
   }
 };
 
-const handleStatusFilter = (status) => {
-  orderFilters.value.status = status;
-  orderFilters.value.page = 1;
-  fetchUserOrders();
+const handleStatusFilter = (status: string | null) => {
+  if (status) {
+    orderFilters.value.status = status;
+    orderFilters.value.page = 1;
+    fetchUserOrders();
+  }
 };
 
 const handlePageChange = (page) => {
@@ -482,15 +491,16 @@ onMounted(() => {
             />
           </div>
           
-          <select
-            v-model="orderFilters.status"
-            @change="handleStatusFilter(orderFilters.status)"
-            class="px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary-color focus:border-transparent"
-          >
-            <option v-for="status in statusOptions" :key="status.value" :value="status.value">
-              {{ status.label }}
-            </option>
-          </select>
+          <Select v-model="orderFilters.status" @update:modelValue="handleStatusFilter">
+            <SelectTrigger class="w-48">
+              <SelectValue placeholder="Filter by status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem v-for="status in statusOptions" :key="status.value" :value="status.value">
+                {{ status.label }}
+              </SelectItem>
+            </SelectContent>
+          </Select>
         </div>
       </div>
 

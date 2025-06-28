@@ -121,12 +121,15 @@ const submitForm = handleSubmit(async () => {
   <div class="flex items-center justify-center min-h-screen py-8">
     <div
       class="justify-self-center relative max-w-[450px] mx-auto lg:w-[400px] lg:px-0 lg:py-0"
-      :class="{'w-[calc(100%-2.5rem)] backdrop-filter px-5 py-5 rounded-lg': true, 'lg:backdrop-filter-none lg:bg-transparent lg:border-0': true}"
+      :class="{
+        'w-[calc(100%-2.5rem)] backdrop-filter px-5 py-5 rounded-lg': true,
+        'lg:backdrop-filter-none lg:bg-transparent lg:border-0': true,
+      }"
     >
       <img
         :src="hutao"
         alt="hutao-image"
-        class="mx-auto rounded-full bottom-[-25px] w-[200px] h-[200px] object-cover"
+        class="mx-auto rounded-full bottom-[-25px] w-[120px] h-[120px] object-cover"
       />
       <form class="">
         <div class="text-white lg:text-black lg:text-center">
@@ -143,7 +146,7 @@ const submitForm = handleSubmit(async () => {
                 id="username"
                 type="text"
                 :placeholder="errors.username ? errors.username : 'Username'"
-                class="w-full text-black placeholder-gray-500 py-[0.65rem] px-4 text-[13px] border-[1px] border-border-color outline-none rounded-sm mb-3"
+                class="w-full text-black placeholder-gray-500 py-2 px-3 text-xs border-[1px] border-border-color outline-none rounded-sm mb-3"
                 :class="{
                   'placeholder-red-700': errors.username,
                   'placeholder-gray-500': !errors.username,
@@ -160,6 +163,12 @@ const submitForm = handleSubmit(async () => {
               <vue-tel-input
                 v-model="phone"
                 @input="onPhoneInput"
+                :dropdownOptions="{
+                  showDialCodeInSelection: false,
+                  showSearchBox: false,
+                  showFlags: true,
+                  showDialCodeInList: true,
+                }"
                 @country-changed="onCountryChanged"
                 :inputOptions="{
                   required: true,
@@ -167,22 +176,16 @@ const submitForm = handleSubmit(async () => {
                     (phone || formMeta.touched) && phoneErrorMessage
                       ? phoneErrorMessage
                       : 'Phone number is required',
+                  class: 'py-2 px-3 text-xs',
                 }"
                 :validCharactersOnly="true"
                 mode="international"
-                class="w-full text-black bg-white py-[0.65rem] text-[13px] border-[1px] border-border-color outline-none rounded-sm mb-3"
+                class="w-full text-black bg-white border-[1px] border-border-color outline-none rounded-sm mb-3"
                 :class="{
                   'border-red-500':
                     (phone || formMeta.touched) && phoneErrorMessage,
                 }"
               ></vue-tel-input>
-
-              <p
-                v-if="(phone || formMeta.touched) && phoneErrorMessage"
-                class="text-red-500 text-xs font-medium -mt-2 mb-4"
-              >
-                {{ phoneErrorMessage }}
-              </p>
             </div>
 
             <div class="flex gap-2 flex-col">
@@ -193,7 +196,7 @@ const submitForm = handleSubmit(async () => {
                 id="email"
                 type="text"
                 :placeholder="errors.email ? errors.email : 'Email'"
-                class="w-full text-black placeholder-gray-500 py-[0.65rem] px-4 text-[13px] border-[1px] border-border-color outline-none rounded-sm mb-3"
+                class="w-full text-black placeholder-gray-500 py-2 px-3 text-xs border-[1px] border-border-color outline-none rounded-sm mb-3"
                 :class="{
                   'placeholder-red-700': errors.email,
                   'placeholder-gray-500': !errors.email,
@@ -209,7 +212,7 @@ const submitForm = handleSubmit(async () => {
                 id="password"
                 type="password"
                 :placeholder="errors.password ? errors.password : 'Password'"
-                class="w-full placeholder-gray-500 py-[0.65rem] px-4 text-[13px] text-black border-[1px] border-border-color outline-none rounded-sm mb-3"
+                class="w-full placeholder-gray-500 py-2 px-3 text-xs text-black border-[1px] border-border-color outline-none rounded-sm mb-3"
                 :class="{
                   'placeholder-red-700': errors.password,
                   'placeholder-gray-500': !errors.password,
@@ -229,7 +232,7 @@ const submitForm = handleSubmit(async () => {
                     ? errors.confirmPassword
                     : 'Confirm Password'
                 "
-                class="w-full placeholder-gray-500 py-[0.65rem] px-4 text-[13px] text-black border-[1px] border-border-color outline-none rounded-sm mb-3"
+                class="w-full placeholder-gray-500 py-2 px-3 text-xs text-black border-[1px] border-border-color outline-none rounded-sm mb-3"
                 :class="{
                   'placeholder-red-700': errors.confirmPassword,
                   'placeholder-gray-500': !errors.confirmPassword,
@@ -296,6 +299,11 @@ const submitForm = handleSubmit(async () => {
   }
 }
 
+:global(.vti__input) {
+  font-size: 0.75rem;
+}
+
 :global(.vti__input::placeholder) {
+  font-size: 0.75rem;
 }
 </style>
