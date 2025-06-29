@@ -7,6 +7,8 @@ import {
   Search,
   ChevronLeft,
   ChevronRight,
+  UserCircleIcon,
+  ShoppingBagIcon,
 } from "lucide-vue-next";
 import { VueTelInput } from 'vue-tel-input';
 import { useOrderStore } from "~/store/order";
@@ -522,7 +524,7 @@ onMounted(() => {
       <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
         <NuxtLink to="/profile?section=orders" class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow">
           <div class="flex items-center space-x-3">
-            <ShoppingBagIcon class="w-8 h-8 text-primary-color" />
+            <ShoppingBagIcon class="w-6 h-6 text-primary-color" />
             <div>
               <h3 class="font-semibold text-gray-900 font-dashboard">View Orders</h3>
               <p class="text-sm text-gray-600">Check your order history</p>
@@ -532,7 +534,7 @@ onMounted(() => {
         
         <NuxtLink to="/profile?section=account" class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow">
           <div class="flex items-center space-x-3">
-            <UserCircleIcon class="w-8 h-8 text-primary-color" />
+            <UserCircleIcon class="w-6 h-6 text-primary-color" />
             <div>
               <h3 class="font-semibold text-gray-900 font-dashboard">Edit Profile</h3>
               <p class="text-sm text-gray-600">Update your information</p>
@@ -542,7 +544,7 @@ onMounted(() => {
         
         <NuxtLink to="/profile?section=support" class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow">
           <div class="flex items-center space-x-3">
-            <HelpCircle class="w-8 h-8 text-primary-color" />
+            <HelpCircle class="w-6 h-6 text-primary-color" />
             <div>
               <h3 class="font-semibold text-gray-900 font-dashboard">Get Help</h3>
               <p class="text-sm text-gray-600">Contact support</p>

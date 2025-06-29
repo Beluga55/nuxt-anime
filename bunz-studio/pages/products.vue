@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { useWindowSize } from "@vueuse/core";
 import { Filter } from "lucide-vue-next";
+import { FunnelIcon } from "@heroicons/vue/24/outline";
 import type { DropdownMenuCheckboxItemProps } from "radix-vue";
 import { Button } from "@/components/ui/button";
 import { Star } from "lucide-vue-next";
