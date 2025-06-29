@@ -31,7 +31,7 @@ const adminStats = ref({
   totalUsers: 0,
   totalOrders: 0,
   totalRevenue: 0,
-  pendingSupport: 0
+  pendingSupport: 0,
 });
 
 // Admin sidebar navigation items
@@ -75,7 +75,9 @@ const sidebarItems = computed(() => [
 
 // Computed properties
 const userName = computed(() => {
-  return userInfo.value?.name || userInfo.value?.email?.split("@")[0] || "Admin";
+  return (
+    userInfo.value?.name || userInfo.value?.email?.split("@")[0] || "Admin"
+  );
 });
 
 const profilePicture = computed(() => {
@@ -84,18 +86,21 @@ const profilePicture = computed(() => {
 
 const currentSectionInfo = computed(() => {
   const section = route.query.section || "overview";
-  return sidebarItems.value.find((item) => item.id === section) || sidebarItems.value[0];
+  return (
+    sidebarItems.value.find((item) => item.id === section) ||
+    sidebarItems.value[0]
+  );
 });
 
 // Methods
 const fetchUserProfile = async () => {
   try {
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem("token");
     if (token) {
-      const response = await $fetch('http://localhost:8080/auth/profile', {
+      const response = await $fetch("http://localhost:8080/auth/profile", {
         headers: {
-          'Authorization': `Bearer ${token}`
-        }
+          Authorization: `Bearer ${token}`,
+        },
       });
       isAdmin.value = response.isAdmin || false;
       if (!isAdmin.value) {
@@ -108,7 +113,7 @@ const fetchUserProfile = async () => {
       }
     }
   } catch (error) {
-    console.error('Error fetching user profile:', error);
+    console.error("Error fetching user profile:", error);
     toast({
       variant: "destructive",
       description: "Failed to verify admin access",
@@ -119,37 +124,37 @@ const fetchUserProfile = async () => {
 
 const fetchAdminStats = async () => {
   try {
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem("token");
     if (!token) return;
 
     // Fetch stats from all admin endpoints in parallel
     const [userStats, orderStats, supportStats] = await Promise.all([
-      $fetch('http://localhost:8080/admin/users/stats', {
-        headers: { 'Authorization': `Bearer ${token}` }
+      $fetch("http://localhost:8080/admin/users/stats", {
+        headers: { Authorization: `Bearer ${token}` },
       }),
-      $fetch('http://localhost:8080/admin/orders/stats', {
-        headers: { 'Authorization': `Bearer ${token}` }
+      $fetch("http://localhost:8080/admin/orders/stats", {
+        headers: { Authorization: `Bearer ${token}` },
       }),
-      $fetch('http://localhost:8080/admin/support/stats', {
-        headers: { 'Authorization': `Bearer ${token}` }
-      })
+      $fetch("http://localhost:8080/admin/support/stats", {
+        headers: { Authorization: `Bearer ${token}` },
+      }),
     ]);
 
     // Update admin stats with real data
     adminStats.value = {
-      totalUsers: userStats.totalUsers || 0,
-      totalOrders: orderStats.totalOrders || 0,
-      totalRevenue: orderStats.totalRevenue || 0,
-      pendingSupport: supportStats.statusBreakdown?.open || 0
+      totalUsers: userStats.general.totalUsers || 0,
+      totalOrders: orderStats.general.totalOrders || 0,
+      totalRevenue: orderStats.general.totalRevenue || 0,
+      pendingSupport: supportStats.general.openTickets || 0,
     };
   } catch (error) {
-    console.error('Error fetching admin stats:', error);
+    console.error("Error fetching admin stats:", error);
     // Fallback to zero values if API fails
     adminStats.value = {
       totalUsers: 0,
       totalOrders: 0,
       totalRevenue: 0,
-      pendingSupport: 0
+      pendingSupport: 0,
     };
   }
 };
@@ -192,13 +197,8 @@ onMounted(async () => {
 });
 
 // Provide data to child components
-provide("adminData", {
-  activeSection: computed(() => route.query.section || "overview"),
-  userInfo,
-  isAdmin,
-  adminStats,
-  navigateToSection,
-});
+provide("adminStats", adminStats);
+provide("userInfo", userInfo);
 </script>
 
 <template>
@@ -228,7 +228,9 @@ provide("adminData", {
               />
               <User v-else class="w-8 h-8 text-gray-400" />
               <div class="hidden sm:block">
-                <h1 class="text-lg font-bold text-text-color-dark font-dashboard">
+                <h1
+                  class="text-lg font-bold text-text-color-dark font-dashboard"
+                >
                   {{ userName }}
                 </h1>
                 <p class="text-xs text-gray-600 font-dashboard">
@@ -240,10 +242,10 @@ provide("adminData", {
 
           <!-- Right: Action buttons -->
           <div class="flex items-center space-x-3">
-            <Button 
+            <Button
               @click="goToMainSite"
-              variant="ghost" 
-              size="sm" 
+              variant="ghost"
+              size="sm"
               class="hidden sm:flex text-gray-600 hover:text-gray-700"
             >
               <Home class="w-5 h-5" />
@@ -270,7 +272,9 @@ provide("adminData", {
 
     <div class="flex-1 flex overflow-hidden">
       <!-- Sidebar -->
-      <div class="hidden lg:block w-64 flex-shrink-0 bg-white border-r border-gray-200 overflow-y-auto p-6">
+      <div
+        class="hidden lg:block w-64 flex-shrink-0 bg-white border-r border-gray-200 overflow-y-auto p-6"
+      >
         <!-- Navigation -->
         <nav class="space-y-1">
           <button
@@ -317,28 +321,36 @@ provide("adminData", {
                 <Users class="w-3 h-3 text-gray-400" />
                 <span class="text-xs text-gray-600">Total Users</span>
               </div>
-              <span class="text-xs font-semibold text-primary-color">{{ adminStats.totalUsers }}</span>
+              <span class="text-xs font-semibold text-primary-color">{{
+                adminStats.totalUsers
+              }}</span>
             </div>
             <div class="flex items-center justify-between">
               <div class="flex items-center space-x-2">
                 <ShoppingBag class="w-3 h-3 text-gray-400" />
                 <span class="text-xs text-gray-600">Total Orders</span>
               </div>
-              <span class="text-xs font-semibold text-primary-color">{{ adminStats.totalOrders }}</span>
+              <span class="text-xs font-semibold text-primary-color">{{
+                adminStats.totalOrders
+              }}</span>
             </div>
             <div class="flex items-center justify-between">
               <div class="flex items-center space-x-2">
                 <CreditCard class="w-3 h-3 text-gray-400" />
                 <span class="text-xs text-gray-600">Revenue</span>
               </div>
-              <span class="text-xs font-semibold text-primary-color">RM {{ adminStats.totalRevenue.toFixed(2) }}</span>
+              <span class="text-xs font-semibold text-primary-color"
+                >RM {{ adminStats.totalRevenue.toFixed(2) }}</span
+              >
             </div>
             <div class="flex items-center justify-between">
               <div class="flex items-center space-x-2">
                 <MessageSquare class="w-3 h-3 text-gray-400" />
                 <span class="text-xs text-gray-600">Support</span>
               </div>
-              <span class="text-xs font-semibold text-orange-600">{{ adminStats.pendingSupport }} pending</span>
+              <span class="text-xs font-semibold text-orange-600"
+                >{{ adminStats.pendingSupport }} pending</span
+              >
             </div>
           </div>
         </div>
@@ -387,9 +399,15 @@ provide("adminData", {
               <div>
                 <div class="flex items-center space-x-2">
                   <Shield class="w-5 h-5 text-primary-color" />
-                  <h2 class="text-lg font-bold font-dashboard text-primary-color">Admin Panel</h2>
+                  <h2
+                    class="text-lg font-bold font-dashboard text-primary-color"
+                  >
+                    Admin Panel
+                  </h2>
                 </div>
-                <p class="text-sm text-gray-600">{{ userName }} - Administrator</p>
+                <p class="text-sm text-gray-600">
+                  {{ userName }} - Administrator
+                </p>
               </div>
             </div>
             <Button
@@ -433,7 +451,10 @@ provide("adminData", {
           </nav>
 
           <!-- Mobile Admin Stats -->
-          <div v-if="!isLoading" class="mt-6 bg-primary-color/10 rounded-lg p-4">
+          <div
+            v-if="!isLoading"
+            class="mt-6 bg-primary-color/10 rounded-lg p-4"
+          >
             <div class="flex items-center space-x-2 mb-3">
               <BarChart3 class="w-4 h-4 text-primary-color" />
               <h3 class="text-sm font-medium text-primary-color font-dashboard">
@@ -442,19 +463,27 @@ provide("adminData", {
             </div>
             <div class="grid grid-cols-2 gap-3">
               <div class="text-center">
-                <p class="text-lg font-bold text-primary-color">{{ adminStats.totalUsers }}</p>
+                <p class="text-lg font-bold text-primary-color">
+                  {{ adminStats.totalUsers }}
+                </p>
                 <p class="text-xs text-gray-600">Users</p>
               </div>
               <div class="text-center">
-                <p class="text-lg font-bold text-primary-color">{{ adminStats.totalOrders }}</p>
+                <p class="text-lg font-bold text-primary-color">
+                  {{ adminStats.totalOrders }}
+                </p>
                 <p class="text-xs text-gray-600">Orders</p>
               </div>
               <div class="text-center">
-                <p class="text-sm font-bold text-primary-color">RM {{ adminStats.totalRevenue.toFixed(0) }}k</p>
+                <p class="text-sm font-bold text-primary-color">
+                  RM {{ adminStats.totalRevenue.toFixed(0) }}k
+                </p>
                 <p class="text-xs text-gray-600">Revenue</p>
               </div>
               <div class="text-center">
-                <p class="text-lg font-bold text-orange-600">{{ adminStats.pendingSupport }}</p>
+                <p class="text-lg font-bold text-orange-600">
+                  {{ adminStats.pendingSupport }}
+                </p>
                 <p class="text-xs text-gray-600">Support</p>
               </div>
             </div>

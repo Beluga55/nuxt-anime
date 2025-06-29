@@ -19,10 +19,9 @@ const route = useRoute();
 const router = useRouter();
 
 // Get data from layout
-const adminData = inject('adminData');
+const adminStats = inject('adminStats');
+const userInfo = inject('userInfo');
 const activeSection = computed(() => route.query.section || 'overview');
-const userInfo = adminData?.userInfo;
-const adminStats = adminData?.adminStats;
 
 // Computed properties
 const userName = computed(() => {
@@ -227,8 +226,8 @@ const formatCurrency = (amount: number) => {
       <!-- Stats Grid -->
       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-          <div class="flex items-center justify-center">
-            <div class="flex-1 text-center">
+          <div class="flex items-center justify-between">
+            <div class="flex-1 text-left">
               <p class="text-sm font-medium text-gray-600">Total Users</p>
               <p class="text-2xl font-bold text-gray-900">{{ adminStats?.totalUsers || 0 }}</p>
             </div>
@@ -237,8 +236,8 @@ const formatCurrency = (amount: number) => {
         </div>
 
         <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-          <div class="flex items-center justify-center">
-            <div class="flex-1 text-center">
+          <div class="flex items-center justify-between">
+            <div class="flex-1 text-left">
               <p class="text-sm font-medium text-gray-600">Total Orders</p>
               <p class="text-2xl font-bold text-gray-900">{{ adminStats?.totalOrders || 0 }}</p>
             </div>
@@ -247,8 +246,8 @@ const formatCurrency = (amount: number) => {
         </div>
 
         <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-          <div class="flex items-center justify-center">
-            <div class="flex-1 text-center">
+          <div class="flex items-center justify-between">
+            <div class="flex-1 text-left">
               <p class="text-sm font-medium text-gray-600">Revenue</p>
               <p class="text-2xl font-bold text-gray-900">{{ formatCurrency(adminStats?.totalRevenue || 0) }}</p>
             </div>
@@ -257,14 +256,10 @@ const formatCurrency = (amount: number) => {
         </div>
 
         <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-          <div class="flex items-center justify-center">
-            <div class="flex-1 text-center">
+          <div class="flex items-center justify-between">
+            <div class="flex-1 text-left">
               <p class="text-sm font-medium text-gray-600">Support Tickets</p>
               <p class="text-2xl font-bold text-gray-900">{{ adminStats?.pendingSupport || 0 }}</p>
-              <p class="text-xs text-orange-600 flex items-center justify-center">
-                <AlertTriangle class="w-3 h-3 mr-1" />
-                Pending review
-              </p>
             </div>
             <MessageSquare class="w-8 h-8 text-orange-500" />
           </div>
