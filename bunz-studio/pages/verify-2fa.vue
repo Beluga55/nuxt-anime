@@ -1,8 +1,9 @@
 <template>
-  <div class="min-h-screen bg-white flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
-    <div class="max-w-md w-full space-y-8">
+  <div class="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center py-8 px-4 sm:px-6 lg:px-8">
+    <div class="max-w-md w-full space-y-6">
+      <!-- Header Section -->
       <div class="text-center">
-        <div class="mx-auto h-16 w-16 flex items-center justify-center rounded-full bg-primary-color/10">
+        <div class="mx-auto h-16 w-16 flex items-center justify-center rounded-full bg-primary-color/10 shadow-lg">
           <svg class="w-8 h-8 text-primary-color" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
           </svg>
@@ -10,17 +11,18 @@
         <h2 class="mt-6 text-3xl font-bold text-gray-900 font-dashboard">
           Two-Factor Authentication
         </h2>
-        <p class="mt-2 text-gray-600">
+        <p class="mt-3 text-sm text-gray-600 leading-relaxed">
           Enter the 6-digit code from your authenticator app
         </p>
       </div>
 
-      <form @submit.prevent="verify2FA" class="mt-8 space-y-6">
-        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+      <!-- Main Form -->
+      <form @submit.prevent="verify2FA" class="space-y-6">
+        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
           <div class="space-y-6">
             <!-- 2FA Code Input -->
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-2 font-dashboard">
+            <div v-if="!showBackupCode">
+              <label class="block text-sm font-semibold text-gray-700 mb-2 font-dashboard">
                 Authentication Code
               </label>
               <input
@@ -28,22 +30,22 @@
                 type="text"
                 maxlength="6"
                 pattern="[0-9]{6}"
-                class="w-full px-3 py-3 border border-gray-300 rounded-md text-center text-lg tracking-widest focus:outline-none focus:ring-2 focus:ring-primary-color focus:border-transparent"
+                class="w-full px-4 py-3 border border-gray-300 rounded-lg text-center text-lg tracking-widest font-mono focus:outline-none focus:ring-2 focus:ring-primary-color focus:border-transparent transition-all"
                 placeholder="000000"
                 required
                 :disabled="isLoading"
               />
-              <p class="text-xs text-gray-500 mt-1 text-center">
+              <p class="text-xs text-gray-500 mt-2 text-center">
                 Enter the 6-digit code from your authenticator app
               </p>
             </div>
 
             <!-- Backup Code Option -->
-            <div class="text-center">
+            <div class="text-center py-1">
               <button
                 type="button"
                 @click="showBackupCode = !showBackupCode"
-                class="text-sm text-primary-color hover:text-primary-color/80 font-medium transition-colors"
+                class="text-sm text-primary-color hover:text-primary-color/80 font-medium transition-colors underline-offset-4 hover:underline"
                 :disabled="isLoading"
               >
                 {{ showBackupCode ? 'Use authenticator app instead' : 'Use backup code instead' }}
@@ -52,25 +54,25 @@
 
             <!-- Backup Code Input (Hidden by default) -->
             <div v-if="showBackupCode">
-              <label class="block text-sm font-medium text-gray-700 mb-2 font-dashboard">
+              <label class="block text-sm font-semibold text-gray-700 mb-2 font-dashboard">
                 Backup Code
               </label>
               <input
                 v-model="backupCode"
                 type="text"
                 maxlength="8"
-                class="w-full px-3 py-3 border border-gray-300 rounded-md text-center text-lg tracking-widest uppercase focus:outline-none focus:ring-2 focus:ring-primary-color focus:border-transparent"
+                class="w-full px-4 py-3 border border-gray-300 rounded-lg text-center text-lg tracking-widest uppercase font-mono focus:outline-none focus:ring-2 focus:ring-primary-color focus:border-transparent transition-all"
                 placeholder="XXXXXXXX"
                 :disabled="isLoading"
               />
-              <p class="text-xs text-gray-500 mt-1 text-center">
+              <p class="text-xs text-gray-500 mt-2 text-center">
                 Enter one of your backup codes
               </p>
             </div>
 
             <!-- Error Message -->
-            <div v-if="errorMessage" class="bg-red-50 border border-red-200 rounded-md p-3">
-              <p class="text-sm text-red-600 text-center">{{ errorMessage }}</p>
+            <div v-if="errorMessage" class="bg-red-50 border border-red-200 rounded-lg p-3">
+              <p class="text-sm text-red-600 text-center font-medium">{{ errorMessage }}</p>
             </div>
 
             <!-- Submit Button -->
@@ -91,10 +93,10 @@
               <button
                 type="button"
                 @click="backToLogin"
-                class="text-sm text-gray-600 hover:text-gray-800 transition-colors"
+                class="text-sm text-gray-600 hover:text-gray-800 transition-colors font-medium"
                 :disabled="isLoading"
               >
-                ← Back to login
+                <span class="mr-2">←</span>Back to login
               </button>
             </div>
           </div>
@@ -102,12 +104,21 @@
       </form>
 
       <!-- Help Section -->
-      <div class="bg-gray-50 rounded-lg p-4 border border-gray-200">
-        <h3 class="text-sm font-medium text-gray-900 mb-2 font-dashboard">Need help?</h3>
-        <ul class="text-xs text-gray-600 space-y-1">
-          <li>• Make sure your device's time is correct</li>
-          <li>• Try refreshing your authenticator app</li>
-          <li>• Use a backup code if your device is unavailable</li>
+      <div class="bg-white rounded-xl p-4 border border-gray-200 shadow-sm">
+        <h3 class="text-sm font-semibold text-gray-900 mb-3 font-dashboard">Need help?</h3>
+        <ul class="text-xs text-gray-600 space-y-2">
+          <li class="flex items-start">
+            <span class="text-primary-color mr-2">•</span>
+            Make sure your device's time is correct
+          </li>
+          <li class="flex items-start">
+            <span class="text-primary-color mr-2">•</span>
+            Try refreshing your authenticator app
+          </li>
+          <li class="flex items-start">
+            <span class="text-primary-color mr-2">•</span>
+            Use a backup code if your device is unavailable
+          </li>
         </ul>
       </div>
     </div>

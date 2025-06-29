@@ -76,6 +76,13 @@ const show2FAModal = ref(false);
 const showDeleteModal = ref(false);
 const user2FAEnabled = ref(false);
 
+// Support form data
+const supportForm = ref({
+  subject: '',
+  message: ''
+});
+const supportLoading = ref(false);
+
 const statusOptions = [
   { value: 'all', label: 'All Orders' },
   { value: 'Pending', label: 'Pending' },
@@ -92,6 +99,14 @@ const userName = computed(() => {
 
 const profilePicture = computed(() => {
   return userInfo?.value?.image || userInfo?.value?.picture || "";
+});
+
+const subjectCharCount = computed(() => {
+  return supportForm.value.subject?.length || 0;
+});
+
+const messageCharCount = computed(() => {
+  return supportForm.value.message?.length || 0;
 });
 
 const filteredOrders = computed(() => {
@@ -358,6 +373,83 @@ const disable2FA = async () => {
       variant: "destructive",
       description: "Failed to disable two-factor authentication",
     });
+  }
+};
+
+// Support form methods
+const submitSupportRequest = async () => {
+  if (!userInfo?.value?.email) {
+    toast({
+      variant: "destructive",
+      description: "User email not found",
+    });
+    return;
+  }
+
+  // Validate form
+  if (!supportForm.value.subject.trim()) {
+    toast({
+      variant: "destructive",
+      description: "Please enter a subject",
+    });
+    return;
+  }
+
+  if (!supportForm.value.message.trim()) {
+    toast({
+      variant: "destructive",
+      description: "Please enter a message",
+    });
+    return;
+  }
+
+  if (supportForm.value.subject.length > 200) {
+    toast({
+      variant: "destructive",
+      description: "Subject must be less than 200 characters",
+    });
+    return;
+  }
+
+  if (supportForm.value.message.length > 2000) {
+    toast({
+      variant: "destructive",
+      description: "Message must be less than 2000 characters",
+    });
+    return;
+  }
+
+  try {
+    supportLoading.value = true;
+    
+    const response = await $fetch('http://localhost:8080/support', {
+      method: 'POST',
+      body: {
+        email: userInfo.value.email,
+        name: userName.value,
+        subject: supportForm.value.subject.trim(),
+        message: supportForm.value.message.trim()
+      }
+    });
+    
+    toast({
+      description: "Support request submitted successfully. We'll get back to you soon!",
+    });
+    
+    // Reset form
+    supportForm.value = {
+      subject: '',
+      message: ''
+    };
+    
+  } catch (error) {
+    console.error('Error submitting support request:', error);
+    toast({
+      variant: "destructive",
+      description: "Failed to submit support request. Please try again.",
+    });
+  } finally {
+    supportLoading.value = false;
   }
 };
 
@@ -1038,14 +1130,6 @@ onMounted(() => {
               <p class="font-medium">Frequently Asked Questions</p>
               <p class="text-sm text-gray-600">Find answers to common questions</p>
             </a>
-            <a href="#" class="block p-4 border border-gray-200 rounded-lg hover:border-primary-color transition-colors">
-              <p class="font-medium">Shipping Information</p>
-              <p class="text-sm text-gray-600">Learn about our shipping policies</p>
-            </a>
-            <a href="#" class="block p-4 border border-gray-200 rounded-lg hover:border-primary-color transition-colors">
-              <p class="font-medium">Return Policy</p>
-              <p class="text-sm text-gray-600">Understand our return process</p>
-            </a>
           </div>
         </div>
         
@@ -1054,17 +1138,33 @@ onMounted(() => {
           <div class="space-y-4">
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-2">Subject</label>
-              <Input placeholder="How can we help you?" />
+              <Input 
+                v-model="supportForm.subject"
+                placeholder="How can we help you?"
+                :maxlength="200"
+                :disabled="supportLoading"
+              />
+              <p class="text-xs text-gray-500 mt-1">{{ subjectCharCount }}/200 characters</p>
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-2">Message</label>
               <textarea 
-                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-color"
+                v-model="supportForm.message"
+                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-color disabled:opacity-50 disabled:cursor-not-allowed"
                 rows="4"
                 placeholder="Describe your issue or question..."
+                :maxlength="2000"
+                :disabled="supportLoading"
               ></textarea>
+              <p class="text-xs text-gray-500 mt-1">{{ messageCharCount }}/2000 characters</p>
             </div>
-            <Button class="w-full">Send Message</Button>
+            <Button 
+              class="w-full" 
+              @click="submitSupportRequest"
+              :disabled="supportLoading || !supportForm.subject.trim() || !supportForm.message.trim()"
+            >
+              {{ supportLoading ? 'Sending...' : 'Send Message' }}
+            </Button>
           </div>
         </div>
       </div>
