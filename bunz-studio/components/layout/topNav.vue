@@ -39,14 +39,26 @@ const searchInput = ref("");
 const sidebarValue = ref(false);
 const scrollHeader = ref("");
 const scrollY = ref(0);
-const isPopoverOpen = ref(false);
-const isSearchOpen = ref(false);
-const isCartOpen = ref(false);
+// Centralized popover state management
+const activePopover = ref<'search' | 'cart' | 'user' | null>(null);
 const profilePicture = ref("");
 const { tokenStatus, setTokenStatus } = useTokenStatus();
 
 const toggleSidebar = () => (sidebarValue.value = !sidebarValue.value);
 const closeSidebar = () => (sidebarValue.value = false);
+
+// Popover state management functions
+const openPopover = (popover: 'search' | 'cart' | 'user') => {
+  activePopover.value = activePopover.value === popover ? null : popover;
+};
+
+const closePopover = () => {
+  activePopover.value = null;
+};
+
+const isPopoverOpen = (popover: 'search' | 'cart' | 'user') => {
+  return activePopover.value === popover;
+};
 
 const filteredProducts = computed(() =>
   productsStore.products?.data?.filter((product) =>
@@ -65,7 +77,7 @@ const navTextColor = computed(() => {
 });
 
 const handleLogout = () => {
-  isPopoverOpen.value = false;
+  closePopover();
   localStorage.removeItem("userInfo");
   localStorage.removeItem("token");
   localStorage.removeItem("tokenExpiration");
@@ -214,8 +226,8 @@ watchEffect(() => {
 
       <div class="flex items-center gap-2">
         <!-- Search - visible on md screens and above -->
-        <Popover :open="isSearchOpen" class="hidden md:block">
-          <PopoverTrigger @click="isSearchOpen = !isSearchOpen">
+        <Popover :open="isPopoverOpen('search')" class="hidden md:block">
+          <PopoverTrigger @click="openPopover('search')">
             <Search class="size-5 cursor-pointer" />
           </PopoverTrigger>
           <PopoverContent
@@ -242,7 +254,7 @@ watchEffect(() => {
                   <p
                     @click="
                       () => {
-                        isSearchOpen = false;
+                        closePopover();
                         router.push(`/product/${product._id}`);
                       }
                     "
@@ -256,8 +268,8 @@ watchEffect(() => {
           </PopoverContent>
         </Popover>
 
-        <Popover :open="isCartOpen">
-          <PopoverTrigger @click="isCartOpen = !isCartOpen" asChild>
+        <Popover :open="isPopoverOpen('cart')">
+          <PopoverTrigger @click="openPopover('cart')" asChild>
             <div
               class="relative flex items-center justify-center py-1 rounded-full"
             >
@@ -282,16 +294,22 @@ watchEffect(() => {
               <!-- Empty State -->
               <div
                 v-if="cartStore.totalItems === 0"
-                class="flex flex-col items-center gap-4 my-3"
+                class="flex flex-col items-center gap-4 py-8 px-4"
               >
-                <p class="text-sm font-medium">Cart is empty</p>
+                <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center">
+                  <ShoppingBag class="w-8 h-8 text-gray-400" />
+                </div>
+                <div class="text-center">
+                  <p class="text-sm font-medium text-gray-800 mb-1">Your cart is empty</p>
+                  <p class="text-xs text-gray-500">Add some items to get started</p>
+                </div>
                 <Button
                   variant="default"
-                  class="w-full text-sm outline-none border-none"
+                  class="w-full text-sm outline-none border-none bg-primary-color hover:bg-primary-color/90"
                   @click="
                     () => {
                       router.push('/products');
-                      isCartOpen = false;
+                      closePopover();
                     }
                   "
                 >
@@ -351,9 +369,9 @@ watchEffect(() => {
           </PopoverContent>
         </Popover>
 
-        <Popover :open="isPopoverOpen" class="relative z-10">
+        <Popover :open="isPopoverOpen('user')" class="relative z-10">
           <PopoverTrigger
-            @click="isPopoverOpen = !isPopoverOpen"
+            @click="openPopover('user')"
             class="list-none"
           >
             <User v-if="!tokenStatus" class="cursor-pointer size-5" />
@@ -372,13 +390,13 @@ watchEffect(() => {
             <NuxtLink
               class="text-[12.5px] font-regular"
               to="/login"
-              @click="isPopoverOpen = false"
+              @click="closePopover"
               >Login</NuxtLink
             >
             <NuxtLink
               class="text-[12.5px] font-regular"
               to="/register"
-              @click="isPopoverOpen = false"
+              @click="closePopover"
               >Register</NuxtLink
             >
           </PopoverContent>
@@ -389,7 +407,7 @@ watchEffect(() => {
             <NuxtLink
               class="text-[12.5px] font-regular"
               to="/profile"
-              @click="isPopoverOpen = false"
+              @click="closePopover"
               >Profile</NuxtLink
             >
             <p

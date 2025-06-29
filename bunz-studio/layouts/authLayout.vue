@@ -43,7 +43,8 @@ const options = {
   <Toaster />
   <div class="overflow-hidden lg:grid lg:grid-cols-[500px_1fr] lg:items-center">
     <div
-      class="fixed z-20 hidden lg:flex lg:items-center lg:gap-2 left-4 top-5"
+      class="fixed z-20 hidden lg:flex lg:items-center lg:gap-2 left-4 top-5 cursor-pointer"
+      @click="$router.push('/')"
     >
       <HeartIcon class="size-6 text-primary-color" />
       <p class="text-[14px] font-medium lg:text-black text-white">BunzStudio</p>
