@@ -133,4 +133,34 @@ export default {
 
     return completeProfile;
   },
+
+  // Integration with useAuth composable
+  async initializeWithComposable() {
+    if (process.client) {
+      const { useAuth } = require('@/composables/useAuth');
+      const auth = useAuth();
+      
+      // Initialize auth state
+      auth.initializeAuth();
+      
+      // Get current user and sync with store
+      const currentUser = await auth.getCurrentUser();
+      if (currentUser) {
+        this.loginData = currentUser;
+      }
+    }
+  },
+
+  async logoutWithComposable() {
+    if (process.client) {
+      const { useAuth } = require('@/composables/useAuth');
+      const auth = useAuth();
+      
+      // Use composable logout which handles cleanup
+      await auth.logout();
+      
+      // Clear store data
+      this.loginData = null;
+    }
+  }
 };

@@ -162,10 +162,6 @@ onMounted(async () => {
     userInfo.value = JSON.parse(loginData);
     // Fetch user profile to get isGoogle status
     await fetchUserProfile();
-    // Fetch user orders to populate stats for quick stats display
-    if (userInfo.value?.email) {
-      await orderStore.fetchUserOrders(userInfo.value.email);
-    }
   } else {
     router.push("/login");
   }

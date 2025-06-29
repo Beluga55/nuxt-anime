@@ -13,12 +13,15 @@ export default () => {
         return orderRes;
       }),
     
-    fetchOrdersByUserEmail: async (email, params = {}) =>
+    fetchOrdersByUserEmail: async (token, email, params = {}) =>
       apiWrapper(async () => {
         const queryParams = new URLSearchParams(params).toString();
         const url = `/api/orders/user/${encodeURIComponent(email)}${queryParams ? `?${queryParams}` : ''}`;
+        const headers = {
+          Authorization: `Bearer ${token}`,
+        };
         const orderRes = await axiosClient
-          .get(url)
+          .get(url, { headers })
           .then((res) => res.data);
         return orderRes;
       }),

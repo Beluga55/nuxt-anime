@@ -9,12 +9,12 @@ export default {
     return response;
   },
 
-  async fetchUserOrders(email, params = {}) {
+  async fetchUserOrders(token, email, params = {}) {
     this.loading = true;
     this.error = null;
     
     try {
-      const [response, error] = await useApi().order.fetchOrdersByUserEmail(email, params);
+      const [response, error] = await useApi().order.fetchOrdersByUserEmail(token, email, params);
       
       if (error) {
         this.error = error.message || 'Failed to fetch orders';

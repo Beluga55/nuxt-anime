@@ -15,6 +15,8 @@ import {
 } from "lucide-vue-next";
 import { useOrderStore } from "@/store/order/index.js";
 import { useToast } from "@/components/ui/toast/use-toast";
+import { useAxios } from "@/composables/useAxios";
+import { useAuth } from "@/composables/useAuth";
 import {
   Dialog,
   DialogContent,
@@ -24,18 +26,21 @@ import {
 
 // Middleware to protect admin routes
 definePageMeta({
-  middleware: 'admin',
-  layout: 'admin-layout'
+  middleware: "admin",
+  layout: "admin-layout",
 });
 
 const route = useRoute();
 const router = useRouter();
 const orderStore = useOrderStore();
+const { createAxiosClient } = useAxios();
+const axiosClient = createAxiosClient();
+const { user, getCurrentUser, checkAdminStatus } = useAuth();
 
 // Get data from layout
-const adminStats = inject('adminStats');
-const userInfo = inject('userInfo');
-const activeSection = computed(() => route.query.section || 'overview');
+const adminStats = inject("adminStats");
+const userInfo = inject("userInfo");
+const activeSection = computed(() => route.query.section || "overview");
 
 // Recent orders state
 const recentOrders = ref<any[]>([]);
@@ -49,19 +54,27 @@ const isLoadingOrderDetails = ref(false);
 
 // Computed properties
 const userName = computed(() => {
-  return userInfo?.value?.name || userInfo?.value?.email?.split('@')[0] || "Admin";
+  return (
+    user?.value?.name ||
+    user?.value?.username ||
+    userInfo?.value?.name ||
+    userInfo?.value?.email?.split("@")[0] ||
+    "Admin"
+  );
 });
 
 // Fetch recent orders from all users
 const fetchRecentOrders = async (limit = 5) => {
   try {
     isLoadingOrders.value = true;
-    // Use the correct admin API endpoint with proper port
+    const token = localStorage.getItem("token");
+
+    // Use axios client for admin orders endpoint
     const response = await orderStore.fetchOrders({
       limit: limit,
-      page: 1
+      page: 1,
     });
-    
+
     if (response && response.data) {
       if (limit === 5) {
         recentOrders.value = response.data;
@@ -70,13 +83,7 @@ const fetchRecentOrders = async (limit = 5) => {
       }
     }
   } catch (error) {
-    console.error('Error fetching recent orders:', error);
-    // Fallback to mock data if API fails
-    if (limit === 5) {
-      recentOrders.value = mockOrders.value;
-    } else {
-      allOrders.value = mockOrders.value;
-    }
+    console.error("Error fetching recent orders:", error);
   } finally {
     isLoadingOrders.value = false;
   }
@@ -86,16 +93,27 @@ const fetchRecentOrders = async (limit = 5) => {
 const viewOrderDetails = async (orderId: string) => {
   try {
     isLoadingOrderDetails.value = true;
-    const response = await orderStore.viewOrderDetails(orderId);
-    selectedOrderDetails.value = response;
+
+    // Use axios client for admin order details
+    const response = await axiosClient.get(`/admin/orders/${orderId}`);
+    selectedOrderDetails.value = response.data;
     showOrderDetails.value = true;
   } catch (error) {
-    console.error('Error fetching order details:', error);
-    useToast().toast({
-      title: 'Error',
-      description: 'Failed to fetch order details',
-      variant: 'destructive'
-    });
+    console.error("Error fetching order details:", error);
+
+    // Try the order store as fallback
+    try {
+      const response = await orderStore.viewOrderDetails(orderId);
+      selectedOrderDetails.value = response;
+      showOrderDetails.value = true;
+    } catch (fallbackError) {
+      console.error("Fallback order details fetch failed:", fallbackError);
+      useToast().toast({
+        title: "Error",
+        description: "Failed to fetch order details",
+        variant: "destructive",
+      });
+    }
   } finally {
     isLoadingOrderDetails.value = false;
   }
@@ -103,7 +121,7 @@ const viewOrderDetails = async (orderId: string) => {
 
 // Watch for active section changes
 watch(activeSection, (newSection) => {
-  if (newSection === 'orders') {
+  if (newSection === "orders") {
     fetchRecentOrders(50); // Fetch more orders for the orders section
   }
 });
@@ -111,9 +129,9 @@ watch(activeSection, (newSection) => {
 // Lifecycle
 onMounted(() => {
   fetchRecentOrders();
-  
+
   // If user refreshes on orders section, fetch all orders
-  if (activeSection.value === 'orders') {
+  if (activeSection.value === "orders") {
     fetchRecentOrders(50);
   }
 });
@@ -128,17 +146,17 @@ const mockOrders = ref([
     totalAmount: 299.99,
     status: "Processing",
     date: "2024-01-15",
-    items: 3
+    items: 3,
   },
   {
     id: 2,
     orderId: "ORD-2024-002",
     customerName: "Jane Smith",
     customerEmail: "jane@example.com",
-    totalAmount: 156.50,
+    totalAmount: 156.5,
     status: "Shipped",
     date: "2024-01-14",
-    items: 2
+    items: 2,
   },
   {
     id: 3,
@@ -148,8 +166,8 @@ const mockOrders = ref([
     totalAmount: 89.99,
     status: "Delivered",
     date: "2024-01-13",
-    items: 1
-  }
+    items: 1,
+  },
 ]);
 
 const mockProducts = ref([
@@ -160,7 +178,7 @@ const mockProducts = ref([
     price: 89.99,
     stock: 25,
     status: "Active",
-    image: "/placeholder-product.jpg"
+    image: "/placeholder-product.jpg",
   },
   {
     id: 2,
@@ -169,7 +187,7 @@ const mockProducts = ref([
     price: 199.99,
     stock: 12,
     status: "Active",
-    image: "/placeholder-product.jpg"
+    image: "/placeholder-product.jpg",
   },
   {
     id: 3,
@@ -178,8 +196,8 @@ const mockProducts = ref([
     price: 24.99,
     stock: 0,
     status: "Out of Stock",
-    image: "/placeholder-product.jpg"
-  }
+    image: "/placeholder-product.jpg",
+  },
 ]);
 
 const mockUsers = ref([
@@ -190,7 +208,7 @@ const mockUsers = ref([
     role: "Customer",
     joinDate: "2024-01-10",
     orders: 5,
-    totalSpent: 499.95
+    totalSpent: 499.95,
   },
   {
     id: 2,
@@ -199,7 +217,7 @@ const mockUsers = ref([
     role: "Customer",
     joinDate: "2024-01-08",
     orders: 3,
-    totalSpent: 299.97
+    totalSpent: 299.97,
   },
   {
     id: 3,
@@ -208,8 +226,8 @@ const mockUsers = ref([
     role: "Admin",
     joinDate: "2023-12-01",
     orders: 0,
-    totalSpent: 0
-  }
+    totalSpent: 0,
+  },
 ]);
 
 const mockSupportTickets = ref([
@@ -221,7 +239,7 @@ const mockSupportTickets = ref([
     status: "Open",
     priority: "High",
     createdDate: "2024-01-15",
-    lastReply: "2024-01-15"
+    lastReply: "2024-01-15",
   },
   {
     id: 2,
@@ -231,7 +249,7 @@ const mockSupportTickets = ref([
     status: "In Progress",
     priority: "Medium",
     createdDate: "2024-01-14",
-    lastReply: "2024-01-14"
+    lastReply: "2024-01-14",
   },
   {
     id: 3,
@@ -241,52 +259,52 @@ const mockSupportTickets = ref([
     status: "Resolved",
     priority: "Low",
     createdDate: "2024-01-13",
-    lastReply: "2024-01-13"
-  }
+    lastReply: "2024-01-13",
+  },
 ]);
 
 // Methods
 const getStatusColor = (status: string) => {
   switch (status.toLowerCase()) {
-    case 'delivered':
-    case 'resolved':
-    case 'active':
-      return 'text-green-600 bg-green-100 border-green-200';
-    case 'processing':
-    case 'in progress':
-      return 'text-blue-600 bg-blue-100 border-blue-200';
-    case 'shipped':
-      return 'text-purple-600 bg-purple-100 border-purple-200';
-    case 'pending':
-    case 'open':
-      return 'text-yellow-600 bg-yellow-100 border-yellow-200';
-    case 'cancelled':
-      return 'text-red-600 bg-red-100 border-red-200';
-    case 'out of stock':
-      return 'text-red-600 bg-red-100 border-red-200';
+    case "delivered":
+    case "resolved":
+    case "active":
+      return "text-green-600 bg-green-100 border-green-200";
+    case "processing":
+    case "in progress":
+      return "text-blue-600 bg-blue-100 border-blue-200";
+    case "shipped":
+      return "text-purple-600 bg-purple-100 border-purple-200";
+    case "pending":
+    case "open":
+      return "text-yellow-600 bg-yellow-100 border-yellow-200";
+    case "cancelled":
+      return "text-red-600 bg-red-100 border-red-200";
+    case "out of stock":
+      return "text-red-600 bg-red-100 border-red-200";
     default:
-      return 'text-gray-600 bg-gray-100 border-gray-200';
+      return "text-gray-600 bg-gray-100 border-gray-200";
   }
 };
 
 const getPriorityColor = (priority: string) => {
   switch (priority.toLowerCase()) {
-    case 'high':
-      return 'text-red-600 bg-red-100 border-red-200';
-    case 'medium':
-      return 'text-yellow-600 bg-yellow-100 border-yellow-200';
-    case 'low':
-      return 'text-green-600 bg-green-100 border-green-200';
+    case "high":
+      return "text-red-600 bg-red-100 border-red-200";
+    case "medium":
+      return "text-yellow-600 bg-yellow-100 border-yellow-200";
+    case "low":
+      return "text-green-600 bg-green-100 border-green-200";
     default:
-      return 'text-gray-600 bg-gray-100 border-gray-200';
+      return "text-gray-600 bg-gray-100 border-gray-200";
   }
 };
 
 const formatDate = (date: string) => {
-  return new Date(date).toLocaleDateString('en-US', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric'
+  return new Date(date).toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
   });
 };
 
@@ -297,7 +315,7 @@ const formatCurrency = (amount: number) => {
 // Helper function to get proper image URL
 const getImageUrl = (imageUrl: string): string | undefined => {
   if (!imageUrl) return undefined;
-  
+
   // The backend now returns full Google Cloud Storage signed URLs
   // so we can return the URL as-is
   return imageUrl;
@@ -306,15 +324,18 @@ const getImageUrl = (imageUrl: string): string | undefined => {
 
 <template>
   <div>
-
     <!-- Overview Section -->
     <div v-if="activeSection === 'overview'" class="space-y-6">
       <!-- Welcome Card -->
       <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
         <div class="flex items-center justify-between">
           <div>
-            <h2 class="text-2xl font-bold text-text-color-dark font-dashboard">Welcome back, {{ userName }}!</h2>
-            <p class="text-gray-600 mt-1">Here's what's happening with your store today.</p>
+            <h2 class="text-2xl font-bold text-text-color-dark font-dashboard">
+              Welcome back, {{ userName }}!
+            </h2>
+            <p class="text-gray-600 mt-1">
+              Here's what's happening with your store today.
+            </p>
           </div>
           <div class="flex items-center space-x-2">
             <BarChart3 class="w-8 h-8 text-primary-color" />
@@ -328,7 +349,9 @@ const getImageUrl = (imageUrl: string): string | undefined => {
           <div class="flex items-center justify-between">
             <div class="flex-1 text-left">
               <p class="text-sm font-medium text-gray-600">Total Users</p>
-              <p class="text-2xl font-bold text-gray-900">{{ adminStats?.totalUsers || 0 }}</p>
+              <p class="text-2xl font-bold text-gray-900">
+                {{ adminStats?.totalUsers || 0 }}
+              </p>
             </div>
             <Users class="w-8 h-8 text-blue-500" />
           </div>
@@ -338,7 +361,9 @@ const getImageUrl = (imageUrl: string): string | undefined => {
           <div class="flex items-center justify-between">
             <div class="flex-1 text-left">
               <p class="text-sm font-medium text-gray-600">Total Orders</p>
-              <p class="text-2xl font-bold text-gray-900">{{ adminStats?.totalOrders || 0 }}</p>
+              <p class="text-2xl font-bold text-gray-900">
+                {{ adminStats?.totalOrders || 0 }}
+              </p>
             </div>
             <ShoppingBag class="w-8 h-8 text-green-500" />
           </div>
@@ -348,7 +373,9 @@ const getImageUrl = (imageUrl: string): string | undefined => {
           <div class="flex items-center justify-between">
             <div class="flex-1 text-left">
               <p class="text-sm font-medium text-gray-600">Revenue</p>
-              <p class="text-2xl font-bold text-gray-900">{{ formatCurrency(adminStats?.totalRevenue || 0) }}</p>
+              <p class="text-2xl font-bold text-gray-900">
+                {{ formatCurrency(adminStats?.totalRevenue || 0) }}
+              </p>
             </div>
             <BarChart3 class="w-8 h-8 text-purple-500" />
           </div>
@@ -358,7 +385,9 @@ const getImageUrl = (imageUrl: string): string | undefined => {
           <div class="flex items-center justify-between">
             <div class="flex-1 text-left">
               <p class="text-sm font-medium text-gray-600">Support Tickets</p>
-              <p class="text-2xl font-bold text-gray-900">{{ adminStats?.pendingSupport || 0 }}</p>
+              <p class="text-2xl font-bold text-gray-900">
+                {{ adminStats?.pendingSupport || 0 }}
+              </p>
             </div>
             <MessageSquare class="w-8 h-8 text-orange-500" />
           </div>
@@ -367,8 +396,10 @@ const getImageUrl = (imageUrl: string): string | undefined => {
 
       <!-- Recent Activity -->
       <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-        <h3 class="text-lg font-semibold text-gray-900 mb-4 font-dashboard">Recent Orders</h3>
-        
+        <h3 class="text-lg font-semibold text-gray-900 mb-4 font-dashboard">
+          Recent Orders
+        </h3>
+
         <div v-if="isLoadingOrders" class="text-center py-4">
           <p class="text-gray-600">Loading recent orders...</p>
         </div>
@@ -376,10 +407,10 @@ const getImageUrl = (imageUrl: string): string | undefined => {
         <div v-else-if="recentOrders.length === 0" class="text-center py-4">
           <p class="text-gray-600">No recent orders found.</p>
         </div>
-        
+
         <div v-else class="space-y-3">
-          <div 
-            v-for="order in recentOrders.slice(0, 3)" 
+          <div
+            v-for="order in recentOrders.slice(0, 3)"
             :key="order._id || order.id"
             class="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
           >
@@ -387,10 +418,15 @@ const getImageUrl = (imageUrl: string): string | undefined => {
               <ShoppingBag class="w-5 h-5 text-gray-400" />
               <div>
                 <p class="text-sm font-medium text-gray-900">
-                  {{ order.metadata?.order_id || order.orderId || `#${order._id?.slice(-8)}` }}
+                  {{
+                    order.metadata?.order_id ||
+                    order.orderId ||
+                    `#${order._id?.slice(-8)}`
+                  }}
                 </p>
                 <p class="text-xs text-gray-600">
-                  {{ order.userName || order.customerName || 'Customer' }} • {{ formatDate(order.datePlaced || order.date) }}
+                  {{ order.userName || order.customerName || "Customer" }} •
+                  {{ formatDate(order.datePlaced || order.date) }}
                 </p>
               </div>
             </div>
@@ -407,10 +443,10 @@ const getImageUrl = (imageUrl: string): string | undefined => {
             </div>
           </div>
         </div>
-        
+
         <div class="mt-4 text-center">
-          <NuxtLink 
-            to="/admin?section=orders" 
+          <NuxtLink
+            to="/admin?section=orders"
             class="text-sm text-primary-color hover:text-primary-color/80 font-medium"
           >
             View All Orders <span class="ml-1">→</span>
@@ -420,10 +456,17 @@ const getImageUrl = (imageUrl: string): string | undefined => {
     </div>
 
     <!-- Orders Section -->
-    <div v-else-if="activeSection === 'orders'" class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6">
+    <div
+      v-else-if="activeSection === 'orders'"
+      class="bg-white rounded-lg shadow-sm border border-gray-200 p-6"
+    >
+      <div
+        class="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6"
+      >
         <div>
-          <h1 class="text-2xl font-bold text-text-color-dark font-dashboard">Order Management</h1>
+          <h1 class="text-2xl font-bold text-text-color-dark font-dashboard">
+            Order Management
+          </h1>
           <p class="text-gray-600 mt-1">View and manage all customer orders</p>
         </div>
       </div>
@@ -433,12 +476,36 @@ const getImageUrl = (imageUrl: string): string | undefined => {
         <table class="min-w-full divide-y divide-gray-200">
           <thead class="bg-gray-50">
             <tr>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Order</th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Customer</th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total</th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+              <th
+                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+              >
+                Order
+              </th>
+              <th
+                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+              >
+                Customer
+              </th>
+              <th
+                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+              >
+                Date
+              </th>
+              <th
+                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+              >
+                Status
+              </th>
+              <th
+                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+              >
+                Total
+              </th>
+              <th
+                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+              >
+                Actions
+              </th>
             </tr>
           </thead>
           <tbody class="bg-white divide-y divide-gray-200">
@@ -452,36 +519,64 @@ const getImageUrl = (imageUrl: string): string | undefined => {
                 No orders found.
               </td>
             </tr>
-            <tr v-else v-for="order in allOrders" :key="order._id || order.id" class="hover:bg-gray-50">
+            <tr
+              v-else
+              v-for="order in allOrders"
+              :key="order._id || order.id"
+              class="hover:bg-gray-50"
+            >
               <td class="px-6 py-4 whitespace-nowrap">
                 <div>
                   <div class="text-sm font-medium text-gray-900">
-                    {{ order.metadata?.order_id || order.orderId || `#${order._id?.slice(-8)}` }}
+                    {{
+                      order.metadata?.order_id ||
+                      order.orderId ||
+                      `#${order._id?.slice(-8)}`
+                    }}
                   </div>
-                  <div class="text-sm text-gray-500">{{ order.items?.length || order.items || order.orderItems?.length || 1 }} items</div>
+                  <div class="text-sm text-gray-500">
+                    {{
+                      order.items?.length ||
+                      order.items ||
+                      order.orderItems?.length ||
+                      1
+                    }}
+                    items
+                  </div>
                 </div>
               </td>
               <td class="px-6 py-4 whitespace-nowrap">
                 <div>
-                  <div class="text-sm font-medium text-gray-900">{{ order.userName || order.customerName || 'Customer' }}</div>
-                  <div class="text-sm text-gray-500">{{ order.userEmail || order.customerEmail || 'N/A' }}</div>
+                  <div class="text-sm font-medium text-gray-900">
+                    {{ order.userName || order.customerName || "Customer" }}
+                  </div>
+                  <div class="text-sm text-gray-500">
+                    {{ order.userEmail || order.customerEmail || "N/A" }}
+                  </div>
                 </div>
               </td>
               <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                {{ formatDate(order.datePlaced || order.date || order.createdAt) }}
+                {{
+                  formatDate(order.datePlaced || order.date || order.createdAt)
+                }}
               </td>
               <td class="px-6 py-4 whitespace-nowrap">
-                <span :class="getStatusColor(order.status)" class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full border">
+                <span
+                  :class="getStatusColor(order.status)"
+                  class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full border"
+                >
                   {{ order.status }}
                 </span>
               </td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+              <td
+                class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900"
+              >
                 {{ formatCurrency(order.totalAmount || order.totalPrice || 0) }}
               </td>
               <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                <Button 
-                  variant="outline" 
-                  size="sm" 
+                <Button
+                  variant="outline"
+                  size="sm"
                   @click="viewOrderDetails(order._id || order.id)"
                   :disabled="isLoadingOrderDetails"
                 >
@@ -496,26 +591,46 @@ const getImageUrl = (imageUrl: string): string | undefined => {
     </div>
 
     <!-- Products Section -->
-    <div v-else-if="activeSection === 'products'" class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6">
+    <div
+      v-else-if="activeSection === 'products'"
+      class="bg-white rounded-lg shadow-sm border border-gray-200 p-6"
+    >
+      <div
+        class="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6"
+      >
         <div>
-          <h1 class="text-2xl font-bold text-text-color-dark font-dashboard">Product Management</h1>
-          <p class="text-gray-600 mt-1">Manage your inventory and product catalog</p>
+          <h1 class="text-2xl font-bold text-text-color-dark font-dashboard">
+            Product Management
+          </h1>
+          <p class="text-gray-600 mt-1">
+            Manage your inventory and product catalog
+          </p>
         </div>
       </div>
 
       <!-- Products Grid -->
       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        <div v-for="product in mockProducts" :key="product.id" class="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
-          <div class="aspect-square bg-gray-100 rounded-lg mb-4 flex items-center justify-center">
+        <div
+          v-for="product in mockProducts"
+          :key="product.id"
+          class="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow"
+        >
+          <div
+            class="aspect-square bg-gray-100 rounded-lg mb-4 flex items-center justify-center"
+          >
             <Package class="w-12 h-12 text-gray-400" />
           </div>
           <div>
             <h3 class="font-semibold text-gray-900 mb-1">{{ product.name }}</h3>
             <p class="text-sm text-gray-600 mb-2">{{ product.category }}</p>
             <div class="flex items-center justify-between mb-2">
-              <span class="text-lg font-bold text-gray-900">{{ formatCurrency(product.price) }}</span>
-              <span :class="getStatusColor(product.status)" class="px-2 py-1 text-xs font-medium rounded-full border">
+              <span class="text-lg font-bold text-gray-900">{{
+                formatCurrency(product.price)
+              }}</span>
+              <span
+                :class="getStatusColor(product.status)"
+                class="px-2 py-1 text-xs font-medium rounded-full border"
+              >
                 {{ product.status }}
               </span>
             </div>
@@ -530,11 +645,20 @@ const getImageUrl = (imageUrl: string): string | undefined => {
     </div>
 
     <!-- Users Section -->
-    <div v-else-if="activeSection === 'users'" class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6">
+    <div
+      v-else-if="activeSection === 'users'"
+      class="bg-white rounded-lg shadow-sm border border-gray-200 p-6"
+    >
+      <div
+        class="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6"
+      >
         <div>
-          <h1 class="text-2xl font-bold text-text-color-dark font-dashboard">User Management</h1>
-          <p class="text-gray-600 mt-1">Manage customer accounts and permissions</p>
+          <h1 class="text-2xl font-bold text-text-color-dark font-dashboard">
+            User Management
+          </h1>
+          <p class="text-gray-600 mt-1">
+            Manage customer accounts and permissions
+          </p>
         </div>
       </div>
 
@@ -543,29 +667,68 @@ const getImageUrl = (imageUrl: string): string | undefined => {
         <table class="min-w-full divide-y divide-gray-200">
           <thead class="bg-gray-50">
             <tr>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">User</th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Role</th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Join Date</th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Orders</th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total Spent</th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+              <th
+                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+              >
+                User
+              </th>
+              <th
+                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+              >
+                Role
+              </th>
+              <th
+                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+              >
+                Join Date
+              </th>
+              <th
+                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+              >
+                Orders
+              </th>
+              <th
+                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+              >
+                Total Spent
+              </th>
+              <th
+                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+              >
+                Actions
+              </th>
             </tr>
           </thead>
           <tbody class="bg-white divide-y divide-gray-200">
-            <tr v-for="user in mockUsers" :key="user.id" class="hover:bg-gray-50">
+            <tr
+              v-for="user in mockUsers"
+              :key="user.id"
+              class="hover:bg-gray-50"
+            >
               <td class="px-6 py-4 whitespace-nowrap">
                 <div class="flex items-center">
-                  <div class="w-10 h-10 bg-gray-300 rounded-full flex items-center justify-center">
+                  <div
+                    class="w-10 h-10 bg-gray-300 rounded-full flex items-center justify-center"
+                  >
                     <Users class="w-5 h-5 text-gray-600" />
                   </div>
                   <div class="ml-4">
-                    <div class="text-sm font-medium text-gray-900">{{ user.name }}</div>
+                    <div class="text-sm font-medium text-gray-900">
+                      {{ user.name }}
+                    </div>
                     <div class="text-sm text-gray-500">{{ user.email }}</div>
                   </div>
                 </div>
               </td>
               <td class="px-6 py-4 whitespace-nowrap">
-                <span :class="user.role === 'Admin' ? 'text-purple-600 bg-purple-100 border-purple-200' : 'text-blue-600 bg-blue-100 border-blue-200'" class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full border">
+                <span
+                  :class="
+                    user.role === 'Admin'
+                      ? 'text-purple-600 bg-purple-100 border-purple-200'
+                      : 'text-blue-600 bg-blue-100 border-blue-200'
+                  "
+                  class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full border"
+                >
                   {{ user.role }}
                 </span>
               </td>
@@ -575,7 +738,9 @@ const getImageUrl = (imageUrl: string): string | undefined => {
               <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                 {{ user.orders }}
               </td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+              <td
+                class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900"
+              >
                 {{ formatCurrency(user.totalSpent) }}
               </td>
               <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
@@ -588,11 +753,20 @@ const getImageUrl = (imageUrl: string): string | undefined => {
     </div>
 
     <!-- Support Section -->
-    <div v-else-if="activeSection === 'support'" class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6">
+    <div
+      v-else-if="activeSection === 'support'"
+      class="bg-white rounded-lg shadow-sm border border-gray-200 p-6"
+    >
+      <div
+        class="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6"
+      >
         <div>
-          <h1 class="text-2xl font-bold text-text-color-dark font-dashboard">Support Tickets</h1>
-          <p class="text-gray-600 mt-1">Manage customer support requests and inquiries</p>
+          <h1 class="text-2xl font-bold text-text-color-dark font-dashboard">
+            Support Tickets
+          </h1>
+          <p class="text-gray-600 mt-1">
+            Manage customer support requests and inquiries
+          </p>
         </div>
       </div>
 
@@ -601,35 +775,75 @@ const getImageUrl = (imageUrl: string): string | undefined => {
         <table class="min-w-full divide-y divide-gray-200">
           <thead class="bg-gray-50">
             <tr>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ticket</th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Customer</th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Priority</th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created</th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+              <th
+                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+              >
+                Ticket
+              </th>
+              <th
+                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+              >
+                Customer
+              </th>
+              <th
+                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+              >
+                Status
+              </th>
+              <th
+                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+              >
+                Priority
+              </th>
+              <th
+                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+              >
+                Created
+              </th>
+              <th
+                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+              >
+                Actions
+              </th>
             </tr>
           </thead>
           <tbody class="bg-white divide-y divide-gray-200">
-            <tr v-for="ticket in mockSupportTickets" :key="ticket.id" class="hover:bg-gray-50">
+            <tr
+              v-for="ticket in mockSupportTickets"
+              :key="ticket.id"
+              class="hover:bg-gray-50"
+            >
               <td class="px-6 py-4 whitespace-nowrap">
                 <div>
-                  <div class="text-sm font-medium text-gray-900">#{{ ticket.id.toString().padStart(3, '0') }}</div>
+                  <div class="text-sm font-medium text-gray-900">
+                    #{{ ticket.id.toString().padStart(3, "0") }}
+                  </div>
                   <div class="text-sm text-gray-500">{{ ticket.subject }}</div>
                 </div>
               </td>
               <td class="px-6 py-4 whitespace-nowrap">
                 <div>
-                  <div class="text-sm font-medium text-gray-900">{{ ticket.customerName }}</div>
-                  <div class="text-sm text-gray-500">{{ ticket.customerEmail }}</div>
+                  <div class="text-sm font-medium text-gray-900">
+                    {{ ticket.customerName }}
+                  </div>
+                  <div class="text-sm text-gray-500">
+                    {{ ticket.customerEmail }}
+                  </div>
                 </div>
               </td>
               <td class="px-6 py-4 whitespace-nowrap">
-                <span :class="getStatusColor(ticket.status)" class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full border">
+                <span
+                  :class="getStatusColor(ticket.status)"
+                  class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full border"
+                >
                   {{ ticket.status }}
                 </span>
               </td>
               <td class="px-6 py-4 whitespace-nowrap">
-                <span :class="getPriorityColor(ticket.priority)" class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full border">
+                <span
+                  :class="getPriorityColor(ticket.priority)"
+                  class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full border"
+                >
                   {{ ticket.priority }}
                 </span>
               </td>
@@ -651,9 +865,11 @@ const getImageUrl = (imageUrl: string): string | undefined => {
         <DialogHeader>
           <DialogTitle class="text-xl font-bold">Order Details</DialogTitle>
         </DialogHeader>
-        
+
         <div v-if="isLoadingOrderDetails" class="p-8 text-center">
-          <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-color mx-auto"></div>
+          <div
+            class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-color mx-auto"
+          ></div>
           <p class="mt-2 text-gray-600">Loading order details...</p>
         </div>
 
@@ -665,28 +881,47 @@ const getImageUrl = (imageUrl: string): string | undefined => {
                 <ShoppingBag class="w-5 h-5 text-gray-600" />
                 <h3 class="font-medium text-gray-900">Order Info</h3>
               </div>
-              <p class="text-sm text-gray-600">Order ID: {{ selectedOrderDetails.metadata?.order_id || selectedOrderDetails._id.slice(-8) }}</p>
-              <p class="text-sm text-gray-600">Payment: {{ selectedOrderDetails.paymentMethod }}</p>
+              <p class="text-sm text-gray-600">
+                Order ID:
+                {{
+                  selectedOrderDetails.metadata?.order_id ||
+                  selectedOrderDetails._id.slice(-8)
+                }}
+              </p>
+              <p class="text-sm text-gray-600">
+                Payment: {{ selectedOrderDetails.paymentMethod }}
+              </p>
             </div>
-            
+
             <div class="bg-gray-50 rounded-lg p-4">
               <div class="flex items-center space-x-2 mb-2">
                 <User class="w-5 h-5 text-gray-600" />
                 <h3 class="font-medium text-gray-900">Customer</h3>
               </div>
-              <p class="text-sm text-gray-600">{{ selectedOrderDetails.user?.username }}</p>
-              <p class="text-sm text-gray-600">{{ selectedOrderDetails.user?.email }}</p>
-              <p class="text-sm text-gray-600">{{ selectedOrderDetails.user?.phone }}</p>
+              <p class="text-sm text-gray-600">
+                {{ selectedOrderDetails.user?.username }}
+              </p>
+              <p class="text-sm text-gray-600">
+                {{ selectedOrderDetails.user?.email }}
+              </p>
+              <p class="text-sm text-gray-600">
+                {{ selectedOrderDetails.user?.phone }}
+              </p>
             </div>
-            
+
             <div class="bg-gray-50 rounded-lg p-4">
               <div class="flex items-center space-x-2 mb-2">
                 <Calendar class="w-5 h-5 text-gray-600" />
                 <h3 class="font-medium text-gray-900">Order Date</h3>
               </div>
-              <p class="text-sm text-gray-600">{{ formatDate(selectedOrderDetails.datePlaced) }}</p>
+              <p class="text-sm text-gray-600">
+                {{ formatDate(selectedOrderDetails.datePlaced) }}
+              </p>
               <div class="mt-2">
-                <span :class="getStatusColor(selectedOrderDetails.status)" class="px-2 py-1 text-xs rounded-full">
+                <span
+                  :class="getStatusColor(selectedOrderDetails.status)"
+                  class="px-2 py-1 text-xs rounded-full"
+                >
                   {{ selectedOrderDetails.status }}
                 </span>
               </div>
@@ -701,7 +936,10 @@ const getImageUrl = (imageUrl: string): string | undefined => {
             </div>
             <div class="text-sm text-gray-600">
               <p>{{ selectedOrderDetails.shippingAddress?.address }}</p>
-              <p>{{ selectedOrderDetails.shippingAddress?.city }}, {{ selectedOrderDetails.shippingAddress?.postalCode }}</p>
+              <p>
+                {{ selectedOrderDetails.shippingAddress?.city }},
+                {{ selectedOrderDetails.shippingAddress?.postalCode }}
+              </p>
               <p>{{ selectedOrderDetails.shippingAddress?.country }}</p>
             </div>
           </div>
@@ -721,19 +959,26 @@ const getImageUrl = (imageUrl: string): string | undefined => {
                     class="h-20 w-20 rounded-lg object-cover shadow-sm border border-gray-200"
                     :src="getImageUrl(item.product.image)"
                     :alt="item.product.name"
-                    @error="(e: Event) => {
-                      const target = e.target as HTMLImageElement;
-                      if (target) {
-                        target.style.display = 'none';
-                        target.nextElementSibling?.classList.remove('hidden');
+                    @error="
+                      (e: Event) => {
+                        const target = e.target as HTMLImageElement;
+                        if (target) {
+                          target.style.display = 'none';
+                          target.nextElementSibling?.classList.remove('hidden');
+                        }
                       }
-                    }"
+                    "
                     loading="lazy"
                   />
-                  <div class="h-20 w-20 rounded-lg bg-gray-100 border border-gray-200 flex items-center justify-center hidden">
+                  <div
+                    class="h-20 w-20 rounded-lg bg-gray-100 border border-gray-200 flex items-center justify-center hidden"
+                  >
                     <Package class="w-8 h-8 text-gray-400" />
                   </div>
-                  <div v-if="!getImageUrl(item.product.image)" class="h-20 w-20 rounded-lg bg-gray-100 border border-gray-200 flex items-center justify-center">
+                  <div
+                    v-if="!getImageUrl(item.product.image)"
+                    class="h-20 w-20 rounded-lg bg-gray-100 border border-gray-200 flex items-center justify-center"
+                  >
                     <Package class="w-8 h-8 text-gray-400" />
                     <span class="sr-only">No image available</span>
                   </div>
@@ -741,13 +986,25 @@ const getImageUrl = (imageUrl: string): string | undefined => {
                 <div class="flex-1">
                   <div class="flex justify-between">
                     <div>
-                      <h4 class="font-medium text-gray-900">{{ item.product.name }}</h4>
-                      <p class="text-sm text-gray-600">{{ item.product.category }}</p>
-                      <p class="text-sm text-gray-600">Quantity: {{ item.qty }}</p>
+                      <h4 class="font-medium text-gray-900">
+                        {{ item.product.name }}
+                      </h4>
+                      <p class="text-sm text-gray-600">
+                        {{ item.product.category }}
+                      </p>
+                      <p class="text-sm text-gray-600">
+                        Quantity: {{ item.qty }}
+                      </p>
                     </div>
                     <div class="text-right">
-                      <p class="font-medium text-gray-900">RM{{ item.product.price.toFixed(2) }}</p>
-                      <p class="text-sm text-gray-600">Total: RM{{ (item.product.price * item.qty).toFixed(2) }}</p>
+                      <p class="font-medium text-gray-900">
+                        RM{{ item.product.price.toFixed(2) }}
+                      </p>
+                      <p class="text-sm text-gray-600">
+                        Total: RM{{
+                          (item.product.price * item.qty).toFixed(2)
+                        }}
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -758,9 +1015,19 @@ const getImageUrl = (imageUrl: string): string | undefined => {
           <!-- Order Total -->
           <div class="border-t pt-4">
             <div class="flex justify-between items-center">
-              <span class="text-lg font-medium text-gray-900">Order Total:</span>
+              <span class="text-lg font-medium text-gray-900"
+                >Order Total:</span
+              >
               <span class="text-lg font-bold text-primary-color">
-                RM{{ selectedOrderDetails.orderItems.reduce((total: number, item: any) => total + (item.product.price * item.qty), 0).toFixed(2) }}
+                RM{{
+                  selectedOrderDetails.orderItems
+                    .reduce(
+                      (total: number, item: any) =>
+                        total + item.product.price * item.qty,
+                      0
+                    )
+                    .toFixed(2)
+                }}
               </span>
             </div>
           </div>

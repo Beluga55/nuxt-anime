@@ -6,14 +6,16 @@ import {
   deleteOrder,
   getOrderStats
 } from "../controllers/adminOrderController.js";
+import { authMiddleware } from "../middleware/authMiddleware.js";
+import { adminMiddleware } from "../middleware/adminMiddleware.js";
 
 const router = express.Router();
 
-// Admin order routes
-router.get("/", getAdminOrders);
-router.get("/stats", getOrderStats);
-router.get("/:id", getOrderDetails);
-router.put("/:id/status", updateOrderStatus);
-router.delete("/:id", deleteOrder);
+// Admin order routes - all require authentication and admin privileges
+router.get("/", authMiddleware, adminMiddleware, getAdminOrders);
+router.get("/stats", authMiddleware, adminMiddleware, getOrderStats);
+router.get("/:id", authMiddleware, adminMiddleware, getOrderDetails);
+router.put("/:id/status", authMiddleware, adminMiddleware, updateOrderStatus);
+router.delete("/:id", authMiddleware, adminMiddleware, deleteOrder);
 
 export default router;

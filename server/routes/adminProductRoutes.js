@@ -6,14 +6,16 @@ import {
   deleteProduct,
   getProductStats
 } from "../controllers/adminProductController.js";
+import { authMiddleware } from "../middleware/authMiddleware.js";
+import { adminMiddleware } from "../middleware/adminMiddleware.js";
 
 const router = express.Router();
 
-// Admin product routes
-router.get("/", getAdminProducts);
-router.post("/", createProduct);
-router.put("/:id", updateProduct);
-router.delete("/:id", deleteProduct);
-router.get("/stats", getProductStats);
+// Admin product routes - all require authentication and admin privileges
+router.get("/", authMiddleware, adminMiddleware, getAdminProducts);
+router.post("/", authMiddleware, adminMiddleware, createProduct);
+router.put("/:id", authMiddleware, adminMiddleware, updateProduct);
+router.delete("/:id", authMiddleware, adminMiddleware, deleteProduct);
+router.get("/stats", authMiddleware, adminMiddleware, getProductStats);
 
 export default router;

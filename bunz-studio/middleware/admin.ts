@@ -10,7 +10,7 @@ export default defineNuxtRouteMiddleware(async (to) => {
   }
 
   try {
-    // Get user data to check admin status
+    // Make direct API call to check admin status
     const response = await $fetch<{
       username: string;
       email: string;
@@ -23,16 +23,24 @@ export default defineNuxtRouteMiddleware(async (to) => {
       }
     });
     
+    console.log('Admin middleware - User profile:', response);
+    
     // Check if user is admin
     if (!response.isAdmin) {
-      throw createError({
-        statusCode: 403,
-        statusMessage: 'Access denied. Admin privileges required.'
-      });
+      console.log('User is not admin, redirecting to home');
+      return navigateTo("/");
     }
+    
+    console.log('Admin access granted');
   } catch (error) {
     console.error('Admin middleware error:', error);
-    // If error getting user data or user is not admin, redirect to home
+    
+    // If 401, redirect to login
+    if (error.data?.statusCode === 401 || error.response?.status === 401) {
+      return navigateTo("/login");
+    }
+    
+    // For other errors, redirect to home
     return navigateTo("/");
   }
 });

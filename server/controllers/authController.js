@@ -4,7 +4,6 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import * as dotenv from "dotenv";
 import twilio from "twilio";
-import Otp from "../models/Otp.js";
 import speakeasy from "speakeasy";
 import QRCode from "qrcode";
 import crypto from "crypto";
