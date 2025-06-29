@@ -40,5 +40,12 @@ export default {
     this.ordersPagination = null;
     this.ordersStats = null;
     this.error = null;
-  }
+  },
+
+  async fetchOrders(params = {}) {
+    const [response, error] = await useApi().order.fetchOrders(params);
+    if (error) return;
+
+    return response;
+  },
 };

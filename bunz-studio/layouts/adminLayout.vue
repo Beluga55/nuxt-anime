@@ -475,8 +475,8 @@ provide("userInfo", userInfo);
                 <p class="text-xs text-gray-600">Orders</p>
               </div>
               <div class="text-center">
-                <p class="text-sm font-bold text-primary-color">
-                  RM {{ adminStats.totalRevenue.toFixed(0) }}k
+                <p class="text-lg font-bold text-primary-color">
+                  RM {{ adminStats.totalRevenue.toFixed(0) }}
                 </p>
                 <p class="text-xs text-gray-600">Revenue</p>
               </div>

@@ -21,6 +21,13 @@ export default () => {
           .get(url)
           .then((res) => res.data);
         return orderRes;
-      })
+      }),
+    fetchOrders: async (params = {}) =>
+      apiWrapper(async () => {
+        const queryParams = new URLSearchParams(params).toString();
+        const url = `/admin/orders${queryParams ? `?${queryParams}` : ''}`;
+        const orderRes = await axiosClient.get(url).then((res) => res.data);
+        return orderRes;
+      }),
   };
 };

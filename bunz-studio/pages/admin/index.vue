@@ -8,6 +8,7 @@ import {
   MessageSquare,
   AlertTriangle,
 } from "lucide-vue-next";
+import { useOrderStore } from "@/store/order/index.js";
 
 // Middleware to protect admin routes
 definePageMeta({
@@ -17,18 +18,71 @@ definePageMeta({
 
 const route = useRoute();
 const router = useRouter();
+const orderStore = useOrderStore();
 
 // Get data from layout
 const adminStats = inject('adminStats');
 const userInfo = inject('userInfo');
 const activeSection = computed(() => route.query.section || 'overview');
 
+// Recent orders state
+const recentOrders = ref<any[]>([]);
+const isLoadingOrders = ref(false);
+const allOrders = ref<any[]>([]);
+
 // Computed properties
 const userName = computed(() => {
   return userInfo?.value?.name || userInfo?.value?.email?.split('@')[0] || "Admin";
 });
 
-// Mock data for demonstration
+// Fetch recent orders from all users
+const fetchRecentOrders = async (limit = 5) => {
+  try {
+    isLoadingOrders.value = true;
+    // Use the correct admin API endpoint with proper port
+    const response = await orderStore.fetchOrders({
+      limit: limit,
+      page: 1
+    });
+    
+    if (response && response.data) {
+      if (limit === 5) {
+        recentOrders.value = response.data;
+      } else {
+        allOrders.value = response.data;
+      }
+    }
+  } catch (error) {
+    console.error('Error fetching recent orders:', error);
+    // Fallback to mock data if API fails
+    if (limit === 5) {
+      recentOrders.value = mockOrders.value;
+    } else {
+      allOrders.value = mockOrders.value;
+    }
+  } finally {
+    isLoadingOrders.value = false;
+  }
+};
+
+// Watch for active section changes
+watch(activeSection, (newSection) => {
+  if (newSection === 'orders') {
+    fetchRecentOrders(50); // Fetch more orders for the orders section
+  }
+});
+
+// Lifecycle
+onMounted(() => {
+  fetchRecentOrders();
+  
+  // If user refreshes on orders section, fetch all orders
+  if (activeSection.value === 'orders') {
+    fetchRecentOrders(50);
+  }
+});
+
+// Mock data for demonstration (fallback)
 const mockOrders = ref([
   {
     id: 1,
@@ -270,21 +324,35 @@ const formatCurrency = (amount: number) => {
       <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
         <h3 class="text-lg font-semibold text-gray-900 mb-4 font-dashboard">Recent Orders</h3>
         
-        <div class="space-y-3">
+        <div v-if="isLoadingOrders" class="text-center py-4">
+          <p class="text-gray-600">Loading recent orders...</p>
+        </div>
+
+        <div v-else-if="recentOrders.length === 0" class="text-center py-4">
+          <p class="text-gray-600">No recent orders found.</p>
+        </div>
+        
+        <div v-else class="space-y-3">
           <div 
-            v-for="order in mockOrders.slice(0, 3)" 
-            :key="order.id"
+            v-for="order in recentOrders.slice(0, 3)" 
+            :key="order._id || order.id"
             class="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
           >
             <div class="flex items-center space-x-3">
               <ShoppingBag class="w-5 h-5 text-gray-400" />
               <div>
-                <p class="text-sm font-medium text-gray-900">{{ order.orderId }}</p>
-                <p class="text-xs text-gray-600">{{ order.customerName }} • {{ formatDate(order.date) }}</p>
+                <p class="text-sm font-medium text-gray-900">
+                  {{ order.metadata?.order_id || order.orderId || `#${order._id?.slice(-8)}` }}
+                </p>
+                <p class="text-xs text-gray-600">
+                  {{ order.userName || order.customerName || 'Customer' }} • {{ formatDate(order.datePlaced || order.date) }}
+                </p>
               </div>
             </div>
             <div class="text-right">
-              <p class="text-sm font-medium text-gray-900">{{ formatCurrency(order.totalAmount) }}</p>
+              <p class="text-sm font-medium text-gray-900">
+                {{ formatCurrency(order.totalAmount || order.totalPrice || 0) }}
+              </p>
               <span
                 :class="getStatusColor(order.status)"
                 class="inline-block px-2 py-1 rounded-full text-xs font-medium border"
@@ -300,7 +368,7 @@ const formatCurrency = (amount: number) => {
             to="/admin?section=orders" 
             class="text-sm text-primary-color hover:text-primary-color/80 font-medium"
           >
-            View All Orders →
+            View All Orders <span class="ml-1">→</span>
           </NuxtLink>
         </div>
       </div>
@@ -329,21 +397,33 @@ const formatCurrency = (amount: number) => {
             </tr>
           </thead>
           <tbody class="bg-white divide-y divide-gray-200">
-            <tr v-for="order in mockOrders" :key="order.id" class="hover:bg-gray-50">
+            <tr v-if="isLoadingOrders">
+              <td colspan="6" class="px-6 py-4 text-center text-gray-600">
+                Loading orders...
+              </td>
+            </tr>
+            <tr v-else-if="allOrders.length === 0">
+              <td colspan="6" class="px-6 py-4 text-center text-gray-600">
+                No orders found.
+              </td>
+            </tr>
+            <tr v-else v-for="order in allOrders" :key="order._id || order.id" class="hover:bg-gray-50">
               <td class="px-6 py-4 whitespace-nowrap">
                 <div>
-                  <div class="text-sm font-medium text-gray-900">{{ order.orderId }}</div>
-                  <div class="text-sm text-gray-500">{{ order.items }} items</div>
+                  <div class="text-sm font-medium text-gray-900">
+                    {{ order.metadata?.order_id || order.orderId || `#${order._id?.slice(-8)}` }}
+                  </div>
+                  <div class="text-sm text-gray-500">{{ order.items?.length || order.items || order.orderItems?.length || 1 }} items</div>
                 </div>
               </td>
               <td class="px-6 py-4 whitespace-nowrap">
                 <div>
-                  <div class="text-sm font-medium text-gray-900">{{ order.customerName }}</div>
-                  <div class="text-sm text-gray-500">{{ order.customerEmail }}</div>
+                  <div class="text-sm font-medium text-gray-900">{{ order.userName || order.customerName || 'Customer' }}</div>
+                  <div class="text-sm text-gray-500">{{ order.userEmail || order.customerEmail || 'N/A' }}</div>
                 </div>
               </td>
               <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                {{ formatDate(order.date) }}
+                {{ formatDate(order.datePlaced || order.date || order.createdAt) }}
               </td>
               <td class="px-6 py-4 whitespace-nowrap">
                 <span :class="getStatusColor(order.status)" class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full border">
@@ -351,7 +431,7 @@ const formatCurrency = (amount: number) => {
                 </span>
               </td>
               <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                {{ formatCurrency(order.totalAmount) }}
+                {{ formatCurrency(order.totalAmount || order.totalPrice || 0) }}
               </td>
               <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                 <Button variant="outline" size="sm">View</Button>
