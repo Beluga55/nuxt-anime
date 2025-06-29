@@ -1,15 +1,13 @@
 <script setup lang="ts">
 import {
-  UserCircleIcon,
-  ShoppingBagIcon,
-  QuestionMarkCircleIcon,
-  EnvelopeIcon,
-  PhoneIcon,
-  GlobeAltIcon,
-  MagnifyingGlassIcon,
-  ChevronLeftIcon,
-  ChevronRightIcon,
-} from "@heroicons/vue/24/outline";
+  HelpCircle,
+  Mail,
+  Phone,
+  Globe,
+  Search,
+  ChevronLeft,
+  ChevronRight,
+} from "lucide-vue-next";
 import { VueTelInput } from 'vue-tel-input';
 import { useOrderStore } from "~/store/order";
 import { useToast } from "@/components/ui/toast/use-toast";
@@ -21,6 +19,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import Toggle from "@/components/ui/toggle/Toggle.vue";
+import PasswordChangeModal from "@/components/PasswordChangeModal.vue";
+import TwoFactorSetup from "@/components/TwoFactorSetup.vue";
+import DeleteAccountModal from "@/components/DeleteAccountModal.vue";
 
 definePageMeta({
   layout: "dashboard-layout",
@@ -68,6 +69,12 @@ const emailPreferences = ref({
 
 const emailLoading = ref(false);
 const testEmailLoading = ref('');
+
+// Security section data
+const showPasswordModal = ref(false);
+const show2FAModal = ref(false);
+const showDeleteModal = ref(false);
+const user2FAEnabled = ref(false);
 
 const statusOptions = [
   { value: 'all', label: 'All Orders' },
@@ -311,6 +318,49 @@ const sendTestEmail = async (emailType) => {
   }
 };
 
+// Security methods
+const fetchUser2FAStatus = async () => {
+  if (!userInfo?.value?.email) return;
+  
+  try {
+    const token = localStorage.getItem('token');
+    if (token) {
+      const response = await $fetch(`http://localhost:8080/auth/profile`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      user2FAEnabled.value = response.twoFactorEnabled || false;
+    }
+  } catch (error) {
+    console.error('Error fetching 2FA status:', error);
+    // Set default to false if we can't fetch
+    user2FAEnabled.value = false;
+  }
+};
+
+const disable2FA = async () => {
+  try {
+    await $fetch(`http://localhost:8080/auth/disable-2fa`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('token')}`
+      }
+    });
+    
+    user2FAEnabled.value = false;
+    toast({
+      description: "Two-factor authentication disabled successfully",
+    });
+  } catch (error) {
+    console.error('Error disabling 2FA:', error);
+    toast({
+      variant: "destructive",
+      description: "Failed to disable two-factor authentication",
+    });
+  }
+};
+
 // Watch for section changes
 watch(activeSection, (newSection) => {
   if (newSection === 'orders' && userInfo?.value?.email) {
@@ -320,6 +370,8 @@ watch(activeSection, (newSection) => {
     fetchUserOrders({ limit: 5 });
   } else if (newSection === 'settings' && userInfo?.value?.email) {
     fetchEmailPreferences();
+  } else if (newSection === 'security' && userInfo?.value?.email) {
+    fetchUser2FAStatus();
   }
 });
 
@@ -362,11 +414,11 @@ onMounted(() => {
             <p class="text-gray-600">{{ userInfo?.email }}</p>
             <div class="flex items-center space-x-4 mt-2 text-sm text-gray-500">
               <span v-if="userInfo?.phone" class="flex items-center">
-                <PhoneIcon class="w-4 h-4 mr-1" />
+                <Phone class="w-4 h-4 mr-1" />
                 {{ userInfo.phone }}
               </span>
               <span v-if="userInfo?.country" class="flex items-center">
-                <GlobeAltIcon class="w-4 h-4 mr-1" />
+                <Globe class="w-4 h-4 mr-1" />
                 {{ userInfo.country }}
               </span>
             </div>
@@ -398,7 +450,7 @@ onMounted(() => {
         
         <NuxtLink to="/profile?section=support" class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow">
           <div class="flex items-center space-x-3">
-            <QuestionMarkCircleIcon class="w-8 h-8 text-primary-color" />
+            <HelpCircle class="w-8 h-8 text-primary-color" />
             <div>
               <h3 class="font-semibold text-gray-900 font-dashboard">Get Help</h3>
               <p class="text-sm text-gray-600">Contact support</p>
@@ -501,7 +553,7 @@ onMounted(() => {
       <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div>
           <label class="block text-sm font-medium text-gray-700 mb-2">
-            <EnvelopeIcon class="w-4 h-4 inline mr-2" />
+            <Mail class="w-4 h-4 inline mr-2" />
             Email Address
           </label>
           <Input
@@ -517,7 +569,7 @@ onMounted(() => {
         
         <div>
           <label class="block text-sm font-medium text-gray-700 mb-2">
-            <PhoneIcon class="w-4 h-4 inline mr-2" />
+            <Phone class="w-4 h-4 inline mr-2" />
             Phone Number
           </label>
           <div v-if="isEditing" class="w-full">
@@ -549,7 +601,7 @@ onMounted(() => {
         
         <div>
           <label class="block text-sm font-medium text-gray-700 mb-2">
-            <GlobeAltIcon class="w-4 h-4 inline mr-2" />
+            <Globe class="w-4 h-4 inline mr-2" />
             Country
           </label>
           <div v-if="isEditing" class="p-3 bg-gray-100 rounded-md border">
@@ -583,7 +635,7 @@ onMounted(() => {
         <!-- Filters -->
         <div class="flex flex-col sm:flex-row gap-3 mt-4 sm:mt-0">
           <div class="relative">
-            <MagnifyingGlassIcon class="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <Search class="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
             <Input
               v-model="orderFilters.search"
               placeholder="Search orders..."
@@ -709,7 +761,7 @@ onMounted(() => {
               variant="outline"
               size="sm"
             >
-              <ChevronLeftIcon class="w-4 h-4" />
+              <ChevronLeft class="w-4 h-4" />
             </Button>
             <Button
               @click="handlePageChange(orderStore.ordersPagination.currentPage + 1)"
@@ -717,7 +769,7 @@ onMounted(() => {
               variant="outline"
               size="sm"
             >
-              <ChevronRightIcon class="w-4 h-4" />
+              <ChevronRight class="w-4 h-4" />
             </Button>
           </div>
         </div>
@@ -744,7 +796,7 @@ onMounted(() => {
             <div class="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
               <div class="flex-1">
                 <div class="flex items-center space-x-2">
-                  <EnvelopeIcon class="w-5 h-5 text-primary-color" />
+                  <Mail class="w-5 h-5 text-primary-color" />
                   <p class="font-medium text-gray-900">Order Updates</p>
                 </div>
                 <p class="text-sm text-gray-600 mt-1">Receive confirmations, shipping updates, and delivery notifications</p>
@@ -770,7 +822,7 @@ onMounted(() => {
             <div class="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
               <div class="flex-1">
                 <div class="flex items-center space-x-2">
-                  <QuestionMarkCircleIcon class="w-5 h-5 text-blue-500" />
+                  <HelpCircle class="w-5 h-5 text-blue-500" />
                   <p class="font-medium text-gray-900">Support Updates</p>
                 </div>
                 <p class="text-sm text-gray-600 mt-1">Get notified when we respond to your support requests</p>
@@ -930,20 +982,42 @@ onMounted(() => {
         <div>
           <h3 class="text-lg font-medium text-gray-900 mb-3 font-dashboard">Password</h3>
           <p class="text-gray-600 mb-4">Keep your account secure with a strong password</p>
-          <Button variant="outline">Change Password</Button>
+          <Button variant="outline" @click="showPasswordModal = true">Change Password</Button>
         </div>
         
         <div>
           <h3 class="text-lg font-medium text-gray-900 mb-3 font-dashboard">Two-Factor Authentication</h3>
           <p class="text-gray-600 mb-4">Add an extra layer of security to your account</p>
-          <Button variant="outline">Enable 2FA</Button>
+          <div class="flex items-center space-x-3">
+            <Button 
+              v-if="!user2FAEnabled" 
+              variant="outline" 
+              @click="show2FAModal = true"
+            >
+              Enable 2FA
+            </Button>
+            <div v-else class="flex items-center space-x-3">
+              <div class="flex items-center text-green-600">
+                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                Two-Factor Authentication Enabled
+              </div>
+              <Button variant="outline" size="sm" @click="disable2FA">Disable</Button>
+            </div>
+          </div>
         </div>
         
         <div>
-          <h3 class="text-lg font-medium text-gray-900 mb-3 font-dashboard">Data & Privacy</h3>
+          <h3 class="text-lg font-medium text-gray-900 mb-3 font-dashboard">Account Management</h3>
           <div class="space-y-3">
-            <Button variant="outline" class="w-full sm:w-auto">Download My Data</Button>
-            <Button variant="destructive" class="w-full sm:w-auto">Delete Account</Button>
+            <div class="p-4 bg-red-50 border border-red-200 rounded-lg">
+              <h4 class="font-semibold font-dashboard text-red-900 mb-2">Delete Account</h4>
+              <p class="text-sm text-red-700 mb-3">
+                Permanently delete your account and all associated data. This action cannot be undone.
+              </p>
+              <Button variant="destructive" @click="showDeleteModal = true">Delete Account</Button>
+            </div>
           </div>
         </div>
       </div>
@@ -995,6 +1069,25 @@ onMounted(() => {
         </div>
       </div>
     </div>
+
+    <!-- Password Change Modal -->
+    <PasswordChangeModal 
+      v-if="showPasswordModal" 
+      @close="showPasswordModal = false"
+    />
+
+    <!-- Two-Factor Authentication Modal -->
+    <TwoFactorSetup 
+      v-if="show2FAModal" 
+      @close="show2FAModal = false"
+      @enabled="user2FAEnabled = true"
+    />
+
+    <!-- Delete Account Modal -->
+    <DeleteAccountModal 
+      v-if="showDeleteModal" 
+      @close="showDeleteModal = false"
+    />
   </div>
 </template>
 

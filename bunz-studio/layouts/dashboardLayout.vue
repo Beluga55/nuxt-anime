@@ -1,20 +1,20 @@
 <script setup lang="ts">
 import {
-  UserCircleIcon,
-  ShoppingBagIcon,
-  Cog6ToothIcon,
-  ShieldCheckIcon,
-  QuestionMarkCircleIcon,
-  ArrowRightOnRectangleIcon,
-  PhoneIcon,
-  GlobeAltIcon,
-  Bars3Icon,
-  XMarkIcon,
-  BellIcon,
-  CreditCardIcon,
-  ChartBarIcon,
-  IdentificationIcon,
-} from "@heroicons/vue/24/outline";
+  User,
+  ShoppingBag,
+  Settings,
+  Shield,
+  HelpCircle,
+  LogOut,
+  Phone,
+  Globe,
+  Menu,
+  X,
+  Bell,
+  CreditCard,
+  BarChart3,
+  IdCard,
+} from "lucide-vue-next";
 import { useAuthStore } from "~/store/auth";
 import { useOrderStore } from "~/store/order";
 import { useToast } from "@/components/ui/toast/use-toast";
@@ -31,52 +31,62 @@ const route = useRoute();
 const activeSection = ref("overview");
 const isMobileSidebarOpen = ref(false);
 const userInfo = ref(null);
+const isGoogleUser = ref(false);
 
 // Sidebar navigation items
-const sidebarItems = [
-  {
-    id: "overview",
-    label: "Overview",
-    icon: ChartBarIcon,
-    description: "Dashboard overview",
-    route: "/profile",
-  },
-  {
-    id: "account",
-    label: "Account Details",
-    icon: IdentificationIcon,
-    description: "Personal information",
-    route: "/profile?section=account",
-  },
-  {
-    id: "orders",
-    label: "Order History",
-    icon: ShoppingBagIcon,
-    description: "Your past orders",
-    route: "/profile?section=orders",
-  },
-  {
-    id: "settings",
-    label: "Preferences",
-    icon: Cog6ToothIcon,
-    description: "Account settings",
-    route: "/profile?section=settings",
-  },
-  {
-    id: "security",
-    label: "Security",
-    icon: ShieldCheckIcon,
-    description: "Password & security",
-    route: "/profile?section=security",
-  },
-  {
-    id: "support",
-    label: "Help & Support",
-    icon: QuestionMarkCircleIcon,
-    description: "Get assistance",
-    route: "/profile?section=support",
-  },
-];
+const sidebarItems = computed(() => {
+  const allItems = [
+    {
+      id: "overview",
+      label: "Overview",
+      icon: BarChart3,
+      description: "Dashboard overview",
+      route: "/profile",
+    },
+    {
+      id: "account",
+      label: "Account Details",
+      icon: IdCard,
+      description: "Personal information",
+      route: "/profile?section=account",
+    },
+    {
+      id: "orders",
+      label: "Order History",
+      icon: ShoppingBag,
+      description: "Your past orders",
+      route: "/profile?section=orders",
+    },
+    {
+      id: "settings",
+      label: "Preferences",
+      icon: Settings,
+      description: "Account settings",
+      route: "/profile?section=settings",
+    },
+    {
+      id: "security",
+      label: "Security",
+      icon: Shield,
+      description: "Password & security",
+      route: "/profile?section=security",
+    },
+    {
+      id: "support",
+      label: "Help & Support",
+      icon: HelpCircle,
+      description: "Get assistance",
+      route: "/profile?section=support",
+    },
+  ];
+
+  // Filter out security section for Google users
+  if (isGoogleUser.value) {
+    return allItems.filter(item => item.id !== 'security');
+  }
+  
+  return allItems;
+});
 
 // Computed properties
 const userName = computed(() => {
@@ -89,10 +99,27 @@ const profilePicture = computed(() => {
 
 const currentSectionInfo = computed(() => {
   const section = route.query.section || "overview";
-  return sidebarItems.find((item) => item.id === section) || sidebarItems[0];
+  return sidebarItems.value.find((item) => item.id === section) || sidebarItems.value[0];
 });
 
 // Methods
+const fetchUserProfile = async () => {
+  try {
+    const token = localStorage.getItem('token');
+    if (token) {
+      const response = await $fetch('http://localhost:8080/auth/profile', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      isGoogleUser.value = response.isGoogle || false;
+    }
+  } catch (error) {
+    console.error('Error fetching user profile:', error);
+    isGoogleUser.value = false;
+  }
+};
+
 const handleLogout = () => {
   localStorage.removeItem("userInfo");
   localStorage.removeItem("token");
@@ -113,11 +140,25 @@ const navigateToSection = (sectionId: string) => {
   isMobileSidebarOpen.value = false;
 };
 
+// Watch for Google users accessing security section directly
+watch([() => route.query.section, isGoogleUser], ([newSection, isGoogle]) => {
+  if (isGoogle && newSection === 'security') {
+    // Redirect Google users away from security section
+    router.push('/profile');
+    toast({
+      description: "Security settings are managed by your Google account",
+      variant: "default"
+    });
+  }
+});
+
 // Lifecycle
 onMounted(async () => {
   const loginData = localStorage.getItem("userInfo");
   if (loginData) {
     userInfo.value = JSON.parse(loginData);
+    // Fetch user profile to get isGoogle status
+    await fetchUserProfile();
     // Fetch user orders to populate stats for quick stats display
     if (userInfo.value?.email) {
       await orderStore.fetchUserOrders(userInfo.value.email);
@@ -150,7 +191,7 @@ provide("dashboardData", {
               size="sm"
               class="lg:hidden"
             >
-              <Bars3Icon class="w-5 h-5" />
+              <Menu class="w-5 h-5" />
             </Button>
 
             <div class="flex items-center space-x-3">
@@ -161,7 +202,7 @@ provide("dashboardData", {
                 class="w-8 h-8 rounded-full object-cover border border-primary-color"
                 referrerpolicy="no-referrer"
               />
-              <UserCircleIcon v-else class="w-8 h-8 text-gray-400" />
+              <User v-else class="w-8 h-8 text-gray-400" />
               <div class="hidden sm:block">
                 <h1
                   class="text-lg font-bold text-text-color-dark font-dashboard"
@@ -178,7 +219,7 @@ provide("dashboardData", {
           <!-- Right: Action buttons -->
           <div class="flex items-center space-x-3">
             <Button variant="ghost" size="sm" class="hidden sm:flex">
-              <BellIcon class="w-5 h-5" />
+              <Bell class="w-5 h-5" />
             </Button>
 
             <Button
@@ -187,7 +228,7 @@ provide("dashboardData", {
               size="sm"
               class="text-red-600 hover:text-red-700 hover:bg-red-50"
             >
-              <ArrowRightOnRectangleIcon class="w-5 h-5" />
+              <LogOut class="w-5 h-5" />
               <span class="hidden sm:inline ml-2">Logout</span>
             </Button>
           </div>
@@ -240,7 +281,7 @@ provide("dashboardData", {
           <div class="space-y-3">
             <div class="flex items-center justify-between">
               <div class="flex items-center space-x-2">
-                <ShoppingBagIcon class="w-4 h-4 text-gray-400" />
+                <ShoppingBag class="w-4 h-4 text-gray-400" />
                 <span class="text-sm text-gray-600">Total Orders</span>
               </div>
               <span class="text-sm font-semibold text-primary-color">{{
@@ -249,7 +290,7 @@ provide("dashboardData", {
             </div>
             <div class="flex items-center justify-between">
               <div class="flex items-center space-x-2">
-                <CreditCardIcon class="w-4 h-4 text-gray-400" />
+                <CreditCard class="w-4 h-4 text-gray-400" />
                 <span class="text-sm text-gray-600">Total Spent</span>
               </div>
               <span class="text-sm font-semibold text-primary-color"
@@ -287,7 +328,7 @@ provide("dashboardData", {
               variant="ghost"
               size="sm"
             >
-              <XMarkIcon class="w-5 h-5" />
+              <X class="w-5 h-5" />
             </Button>
           </div>
 

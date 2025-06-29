@@ -1,11 +1,11 @@
 <script setup>
 import {
-  ArrowLeftIcon,
-  StarIcon as StarIconSolid,
-  ChevronLeftIcon,
-  ChevronRightIcon,
-} from "@heroicons/vue/24/solid";
-import { StarIcon, FunnelIcon } from "@heroicons/vue/24/outline";
+  ArrowLeft,
+  Star as StarSolid,
+  ChevronLeft,
+  ChevronRight,
+} from "lucide-vue-next";
+import { Star, Filter } from "lucide-vue-next";
 import {
   NumberField,
   NumberFieldContent,
@@ -257,7 +257,7 @@ const loadMore = async () => {
         @click="router.back()" 
         class="inline-flex items-center gap-2 mb-6 group cursor-pointer transition-all duration-200 hover:gap-3 bg-white/70 backdrop-blur-sm rounded-full px-4 py-2 shadow-md hover:shadow-lg border border-secondary-color/30"
       >
-        <ArrowLeftIcon class="text-text-color size-4 group-hover:text-primary-color transition-colors duration-200" />
+        <ArrowLeft class="text-text-color size-4 group-hover:text-primary-color transition-colors duration-200" />
         <span class="text-sm font-medium text-text-color group-hover:text-primary-color transition-colors duration-200">Back to Products</span>
       </button>
 
@@ -298,11 +298,11 @@ const loadMore = async () => {
           <div class="flex flex-col sm:flex-row sm:items-center gap-3 p-4 bg-white/50 backdrop-blur-sm rounded-xl border border-secondary-color/30">
             <div class="flex items-center gap-1">
               <div v-for="star in 5" :key="star">
-                <StarIconSolid
+                <StarSolid
                   v-if="star <= selectedProduct?.rating"
                   class="text-star-color size-5 drop-shadow-sm"
                 />
-                <StarIcon v-else class="text-text-color/30 size-5" />
+                <Star v-else class="text-text-color/30 size-5" />
               </div>
             </div>
             <div class="flex items-center gap-2">
@@ -504,7 +504,7 @@ const loadMore = async () => {
           "
           :disabled="!reviewStore.pagination.hasPrevPage"
         >
-          <ChevronLeftIcon class="size-4" />
+          <ChevronLeft class="size-4" />
         </Button>
 
         <span class="text-sm text-gray-600">
@@ -523,7 +523,7 @@ const loadMore = async () => {
           "
           :disabled="!reviewStore.pagination.hasNextPage"
         >
-          <ChevronRightIcon class="size-4" />
+          <ChevronRight class="size-4" />
         </Button>
       </div>
     </div>
@@ -545,7 +545,7 @@ const loadMore = async () => {
             variant="outline"
           >
             Sort By
-            <FunnelIcon class="size-4" />
+            <Filter class="size-4" />
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent
@@ -624,11 +624,11 @@ const loadMore = async () => {
 
           <div class="flex items-center mt-1">
             <div v-for="star in 5" :key="star">
-              <StarIconSolid
+              <StarSolid
                 v-if="star <= product.rating"
                 class="text-yellow-500 size-4"
               />
-              <StarIcon v-else class="text-black size-4" />
+              <Star v-else class="text-black size-4" />
             </div>
             <div class="ml-2">
               <p class="text-xs font-medium">

@@ -5,8 +5,18 @@ export default {
   async login(data) {
     const [login, error] = await useApi().auth.login(data);
 
-    if (error) return;
+    if (error) throw new Error(error.message);
 
+    // Check if 2FA is required
+    if (login.requires2FA) {
+      // Store temporary token for 2FA verification
+      localStorage.setItem("temp2FAToken", login.tempToken);
+      
+      // Return 2FA requirement info (redirect will be handled by the component)
+      return { requires2FA: true, tempToken: login.tempToken, message: login.message };
+    }
+
+    // Normal login flow (no 2FA)
     const token = login.token;
     const remember = login.remember;
 
@@ -21,7 +31,7 @@ export default {
       localStorage.setItem("token", token);
       localStorage.setItem(
         "tokenExpiration",
-        new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString()
+        new Date(Date.now() + 60 * 60 * 1000).toISOString() // 1 hour
       );
     }
 

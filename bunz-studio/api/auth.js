@@ -60,5 +60,54 @@ export default () => {
           .then((res) => res.data);
         return completeProfileRes;
       }),
+    
+    // Security APIs
+    changePassword: async (data) =>
+      apiWrapper(async () => {
+        const changePasswordRes = await axiosClient
+          .post("/auth/change-password", data)
+          .then((res) => res.data);
+        return changePasswordRes;
+      }),
+    
+    setupTwoFactor: async () =>
+      apiWrapper(async () => {
+        const setupTwoFactorRes = await axiosClient
+          .post("/auth/setup-2fa")
+          .then((res) => res.data);
+        return setupTwoFactorRes;
+      }),
+    
+    verifyTwoFactor: async (data) =>
+      apiWrapper(async () => {
+        const verifyTwoFactorRes = await axiosClient
+          .post("/auth/verify-2fa", data)
+          .then((res) => res.data);
+        return verifyTwoFactorRes;
+      }),
+    
+    disableTwoFactor: async () =>
+      apiWrapper(async () => {
+        const disableTwoFactorRes = await axiosClient
+          .post("/auth/disable-2fa")
+          .then((res) => res.data);
+        return disableTwoFactorRes;
+      }),
+    
+    deleteAccount: async (data) =>
+      apiWrapper(async () => {
+        const deleteAccountRes = await axiosClient
+          .delete("/auth/delete-account", { data })
+          .then((res) => res.data);
+        return deleteAccountRes;
+      }),
+    
+    verifyLogin2FA: async (data) =>
+      apiWrapper(async () => {
+        const verifyLogin2FARes = await axiosClient
+          .post("/auth/verify-login-2fa", data)
+          .then((res) => res.data);
+        return verifyLogin2FARes;
+      }),
   };
 };

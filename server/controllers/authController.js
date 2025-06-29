@@ -5,6 +5,9 @@ import jwt from "jsonwebtoken";
 import * as dotenv from "dotenv";
 import twilio from "twilio";
 import Otp from "../models/Otp.js";
+import speakeasy from "speakeasy";
+import QRCode from "qrcode";
+import crypto from "crypto";
 
 dotenv.config();
 
@@ -72,19 +75,46 @@ export const loginUser = async (req, res) => {
       return res.status(404).json({ message: "Invalid email or password" });
     }
 
+    // Check if user has soft deleted account
+    if (user.deletedAt) {
+      return res.status(410).json({ message: "Account has been deleted" });
+    }
+
     const isPasswordCorrect = await bcrypt.compare(password, user.password);
 
     if (!isPasswordCorrect) {
       return res.status(400).json({ message: "Invalid email or password" });
     }
 
+    // Check if user has 2FA enabled
+    if (user.twoFactorEnabled && user.twoFactorSecret) {
+      // Create temporary token for 2FA verification
+      const tempToken = jwt.sign(
+        { 
+          email: user.email, 
+          id: user._id, 
+          type: 'temp_2fa',
+          remember 
+        },
+        process.env.JWT_SECRET,
+        { expiresIn: "10m" } // Short-lived temp token
+      );
+
+      return res.status(200).json({
+        requires2FA: true,
+        tempToken,
+        message: "Please enter your 2FA code to complete login"
+      });
+    }
+
+    // Normal login without 2FA
     const signedUrl = await getSignedUrl(user.image);
 
     // Create a JWT token
     const token = jwt.sign(
       { email: user.email, id: user._id },
       process.env.JWT_SECRET,
-      { expiresIn: "1h" }
+      { expiresIn: remember ? "30d" : "1h" }
     );
 
     const userData = {
@@ -275,5 +305,358 @@ export const completeProfile = async (req, res) => {
       message: "Failed to complete profile",
       error: error.message,
     });
+  }
+};
+
+// Security endpoints
+
+export const changePassword = async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+    const token = req.headers.authorization?.split(' ')[1];
+    
+    if (!token) {
+      return res.status(401).json({ message: "No token provided" });
+    }
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const user = await User.findById(decoded.id);
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // Check if user has soft deleted account
+    if (user.deletedAt) {
+      return res.status(410).json({ message: "Account has been deleted" });
+    }
+
+    // Verify current password
+    const isCurrentPasswordValid = await bcrypt.compare(currentPassword, user.password);
+    if (!isCurrentPasswordValid) {
+      return res.status(400).json({ message: "Current password is incorrect" });
+    }
+
+    // Hash new password
+    const salt = await bcrypt.genSalt(12);
+    const hashedNewPassword = await bcrypt.hash(newPassword, salt);
+
+    // Update password
+    user.password = hashedNewPassword;
+    await user.save();
+
+    res.status(200).json({ message: "Password changed successfully" });
+  } catch (error) {
+    console.error("Error changing password:", error);
+    res.status(500).json({ message: "Failed to change password" });
+  }
+};
+
+export const setupTwoFactor = async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    
+    if (!token) {
+      return res.status(401).json({ message: "No token provided" });
+    }
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const user = await User.findById(decoded.id);
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // Check if user has soft deleted account
+    if (user.deletedAt) {
+      return res.status(410).json({ message: "Account has been deleted" });
+    }
+
+    // Generate secret
+    const secret = speakeasy.generateSecret({
+      name: `BunzStudio (${user.email})`,
+      issuer: 'BunzStudio',
+      length: 32,
+    });
+
+    // Generate QR code
+    const qrCodeUrl = await QRCode.toDataURL(secret.otpauth_url);
+
+    // Store secret temporarily (will be confirmed during verification)
+    user.twoFactorTempSecret = secret.base32;
+    await user.save();
+
+    res.status(200).json({
+      qrCodeUrl,
+      manualEntryKey: secret.base32,
+      secret: secret.base32
+    });
+  } catch (error) {
+    console.error("Error setting up 2FA:", error);
+    res.status(500).json({ message: "Failed to setup two-factor authentication" });
+  }
+};
+
+export const verifyTwoFactor = async (req, res) => {
+  try {
+    const { token: userToken, secret } = req.body;
+    const authToken = req.headers.authorization?.split(' ')[1];
+    
+    if (!authToken) {
+      return res.status(401).json({ message: "No token provided" });
+    }
+
+    const decoded = jwt.verify(authToken, process.env.JWT_SECRET);
+    const user = await User.findById(decoded.id);
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // Check if user has soft deleted account
+    if (user.deletedAt) {
+      return res.status(410).json({ message: "Account has been deleted" });
+    }
+
+    // Verify the token
+    const verified = speakeasy.totp.verify({
+      secret: secret,
+      encoding: 'base32',
+      token: userToken,
+      window: 2,
+    });
+
+    if (!verified) {
+      return res.status(400).json({ message: "Invalid verification code" });
+    }
+
+    // Generate backup codes
+    const backupCodes = [];
+    for (let i = 0; i < 8; i++) {
+      backupCodes.push(crypto.randomBytes(4).toString('hex').toUpperCase());
+    }
+
+    // Enable 2FA
+    user.twoFactorSecret = secret;
+    user.twoFactorEnabled = true;
+    user.twoFactorBackupCodes = backupCodes;
+    user.twoFactorTempSecret = undefined;
+    await user.save();
+
+    res.status(200).json({
+      message: "Two-factor authentication enabled successfully",
+      backupCodes
+    });
+  } catch (error) {
+    console.error("Error verifying 2FA:", error);
+    res.status(500).json({ message: "Invalid verification code" });
+  }
+};
+
+export const disableTwoFactor = async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    
+    if (!token) {
+      return res.status(401).json({ message: "No token provided" });
+    }
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const user = await User.findById(decoded.id);
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // Check if user has soft deleted account
+    if (user.deletedAt) {
+      return res.status(410).json({ message: "Account has been deleted" });
+    }
+
+    // Disable 2FA
+    user.twoFactorSecret = undefined;
+    user.twoFactorEnabled = false;
+    user.twoFactorBackupCodes = [];
+    user.twoFactorTempSecret = undefined;
+    await user.save();
+
+    res.status(200).json({ message: "Two-factor authentication disabled successfully" });
+  } catch (error) {
+    console.error("Error disabling 2FA:", error);
+    res.status(500).json({ message: "Failed to disable two-factor authentication" });
+  }
+};
+
+export const deleteAccount = async (req, res) => {
+  try {
+    const { password } = req.body;
+    const token = req.headers.authorization?.split(' ')[1];
+    
+    if (!token) {
+      return res.status(401).json({ message: "No token provided" });
+    }
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const user = await User.findById(decoded.id);
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // Check if user already has soft deleted account
+    if (user.deletedAt) {
+      return res.status(410).json({ message: "Account has already been deleted" });
+    }
+
+    // Verify password (skip for Google users)
+    if (!user.isGoogle) {
+      const isPasswordValid = await bcrypt.compare(password, user.password);
+      if (!isPasswordValid) {
+        return res.status(400).json({ message: "Invalid password" });
+      }
+    }
+
+    // Soft delete - set deletedAt timestamp
+    user.deletedAt = new Date();
+    user.isActive = false;
+    
+    // Clear sensitive data but keep for legal/compliance purposes
+    user.twoFactorSecret = undefined;
+    user.twoFactorEnabled = false;
+    user.twoFactorBackupCodes = [];
+    user.twoFactorTempSecret = undefined;
+    
+    await user.save();
+
+    res.status(200).json({ message: "Account deleted successfully" });
+  } catch (error) {
+    console.error("Error deleting account:", error);
+    res.status(500).json({ message: "Failed to delete account" });
+  }
+};
+
+export const getUserProfile = async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    
+    if (!token) {
+      return res.status(401).json({ message: "No token provided" });
+    }
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const user = await User.findById(decoded.id).select('-password -twoFactorSecret -twoFactorBackupCodes -twoFactorTempSecret');
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // Check if user has soft deleted account
+    if (user.deletedAt) {
+      return res.status(410).json({ message: "Account has been deleted" });
+    }
+
+    res.status(200).json({
+      username: user.username,
+      email: user.email,
+      phone: user.phone,
+      country: user.country,
+      twoFactorEnabled: user.twoFactorEnabled,
+      emailPreferences: user.emailPreferences,
+      isGoogle: user.isGoogle
+    });
+  } catch (error) {
+    console.error("Error fetching user profile:", error);
+    res.status(500).json({ message: "Failed to fetch user profile" });
+  }
+};
+
+export const verifyLogin2FA = async (req, res) => {
+  try {
+    const { tempToken, twoFactorCode, backupCode } = req.body;
+    
+    if (!tempToken) {
+      return res.status(400).json({ message: "Temporary token is required" });
+    }
+
+    if (!twoFactorCode && !backupCode) {
+      return res.status(400).json({ message: "2FA code or backup code is required" });
+    }
+
+    // Verify temporary token
+    let decoded;
+    try {
+      decoded = jwt.verify(tempToken, process.env.JWT_SECRET);
+    } catch (error) {
+      return res.status(401).json({ message: "Invalid or expired temporary token" });
+    }
+
+    // Check if it's a valid temp 2FA token
+    if (decoded.type !== 'temp_2fa') {
+      return res.status(401).json({ message: "Invalid token type" });
+    }
+
+    const user = await User.findById(decoded.id);
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // Check if user has soft deleted account
+    if (user.deletedAt) {
+      return res.status(410).json({ message: "Account has been deleted" });
+    }
+
+    if (!user.twoFactorEnabled || !user.twoFactorSecret) {
+      return res.status(400).json({ message: "2FA is not enabled for this account" });
+    }
+
+    let isValidCode = false;
+
+    // Verify 2FA code or backup code
+    if (twoFactorCode) {
+      // Verify TOTP code
+      isValidCode = speakeasy.totp.verify({
+        secret: user.twoFactorSecret,
+        encoding: 'base32',
+        token: twoFactorCode,
+        window: 2,
+      });
+    } else if (backupCode) {
+      // Verify backup code
+      const backupCodeIndex = user.twoFactorBackupCodes.indexOf(backupCode.toUpperCase());
+      if (backupCodeIndex !== -1) {
+        // Remove used backup code
+        user.twoFactorBackupCodes.splice(backupCodeIndex, 1);
+        await user.save();
+        isValidCode = true;
+      }
+    }
+
+    if (!isValidCode) {
+      return res.status(400).json({ message: "Invalid 2FA code or backup code" });
+    }
+
+    // Generate final login token
+    const signedUrl = await getSignedUrl(user.image);
+    
+    const token = jwt.sign(
+      { email: user.email, id: user._id },
+      process.env.JWT_SECRET,
+      { expiresIn: decoded.remember ? "30d" : "1h" }
+    );
+
+    const userData = {
+      username: user.username,
+      email: user.email,
+      image: signedUrl,
+      token,
+      remember: decoded.remember,
+      backupCodesRemaining: user.twoFactorBackupCodes.length
+    };
+
+    res.status(200).json(userData);
+  } catch (error) {
+    console.error("Error verifying 2FA login:", error);
+    res.status(500).json({ message: "Failed to verify 2FA code" });
   }
 };

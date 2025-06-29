@@ -1,12 +1,12 @@
 <script setup lang="ts">
 import {
-  HeartIcon,
-  UserCircleIcon,
-  Bars3BottomRightIcon,
-  ShoppingBagIcon,
-  MagnifyingGlassIcon,
-  XMarkIcon,
-} from "@heroicons/vue/24/outline";
+  Heart,
+  User,
+  Menu,
+  ShoppingBag,
+  Search,
+  X,
+} from "lucide-vue-next";
 import Input from "@/components/ui/input/Input.vue";
 import { useProductsStore } from "@/store/products/index.js";
 import { useRoute, useRouter } from "vue-router";
@@ -197,7 +197,7 @@ watchEffect(() => {
       ]"
     >
       <div class="flex items-center gap-2">
-        <HeartIcon class="size-6 text-primary-color" />
+        <Heart class="size-6 text-primary-color" />
         <p class="text-[14px] font-medium">BunzStudio</p>
       </div>
 
@@ -216,7 +216,7 @@ watchEffect(() => {
         <!-- Search - visible on md screens and above -->
         <Popover :open="isSearchOpen" class="hidden md:block">
           <PopoverTrigger @click="isSearchOpen = !isSearchOpen">
-            <MagnifyingGlassIcon class="size-5 cursor-pointer" />
+            <Search class="size-5 cursor-pointer" />
           </PopoverTrigger>
           <PopoverContent
             class="mt-2 bg-transparent outline-none px-0 py-0 border-none grid shadow-none"
@@ -261,7 +261,7 @@ watchEffect(() => {
             <div
               class="relative flex items-center justify-center py-1 rounded-full"
             >
-              <ShoppingBagIcon class="cursor-pointer size-5" />
+              <ShoppingBag class="cursor-pointer size-5" />
               <div
                 class="absolute -top-2 -right-2 text-xs font-medium rounded-full bg-primary-color text-white w-4 h-4 flex items-center justify-center"
               >
@@ -325,7 +325,7 @@ watchEffect(() => {
                     @click="cartStore.removeFromCart(item.id)"
                   >
                     <!-- Cancel Icon -->
-                    <XMarkIcon class="size-4" />
+                    <X class="size-4" />
                   </Button>
                 </div>
                 <hr v-if="cartStore.cartItems.length > 0" class="my-2" />
@@ -356,7 +356,7 @@ watchEffect(() => {
             @click="isPopoverOpen = !isPopoverOpen"
             class="list-none"
           >
-            <UserCircleIcon v-if="!tokenStatus" class="cursor-pointer size-5" />
+            <User v-if="!tokenStatus" class="cursor-pointer size-5" />
             <img
               v-else
               :src="profilePicture"
@@ -402,7 +402,7 @@ watchEffect(() => {
         </Popover>
         
         <!-- Mobile menu button - only visible on smaller screens -->
-        <Bars3BottomRightIcon
+        <Menu
           @click="toggleSidebar"
           class="cursor-pointer size-5 md:hidden"
         />

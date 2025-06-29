@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import { useWindowSize } from "@vueuse/core";
-import { FunnelIcon } from "@heroicons/vue/24/outline";
+import { Filter } from "lucide-vue-next";
 import type { DropdownMenuCheckboxItemProps } from "radix-vue";
 import { Button } from "@/components/ui/button";
-import { StarIcon } from "@heroicons/vue/24/outline";
-import { StarIcon as StarIconSolid } from "@heroicons/vue/24/solid";
+import { Star } from "lucide-vue-next";
+import { Star as StarSolid } from "lucide-vue-next";
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -352,11 +352,11 @@ onUnmounted(() => {
 
           <div class="flex items-center mt-1">
             <div v-for="star in 5" :key="star">
-              <StarIconSolid
+              <StarSolid
                 v-if="star <= product.rating"
                 class="text-yellow-500 size-4"
               />
-              <StarIcon v-else class="text-black size-4" />
+              <Star v-else class="text-black size-4" />
             </div>
             <div class="ml-2">
               <p class="text-xs font-medium">

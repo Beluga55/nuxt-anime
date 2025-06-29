@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ArrowLeftIcon } from "@heroicons/vue/24/solid";
+import { ArrowLeft } from "lucide-vue-next";
 import { Instagram, Twitter } from "lucide-vue-next";
 import {
   Accordion,
@@ -80,7 +80,7 @@ const submitForm = handleSubmit(async () => {
     <div class="w-full lg:px-10">
       <div class="flex items-center justify-between">
         <div class="flex items-center gap-2">
-          <ArrowLeftIcon class="text-white size-4 arrow-left" />
+          <ArrowLeft class="text-white size-4 arrow-left" />
           <span class="text-xs font-medium text-white">Go Back</span>
         </div>
         <div class="flex items-center gap-2">

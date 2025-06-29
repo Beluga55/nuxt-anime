@@ -1,4 +1,4 @@
-const publicPaths = ['/login', '/register', '/', '/about', '/products', '/complete-profile', '/faqs'];
+const publicPaths = ['/login', '/register', '/', '/about', '/products', '/complete-profile', '/faqs', '/verify-2fa'];
 
 export default defineNuxtRouteMiddleware((to) => {
   // Skip middleware on server-side

@@ -5,7 +5,7 @@ import Paypal from "@/assets/images/paypal.svg";
 import Amex from "@/assets/images/amex.svg";
 import Jcb from "@/assets/images/jcb.svg";
 
-import { HeartIcon } from "@heroicons/vue/24/outline";
+import { Heart } from "lucide-vue-next";
 </script>
 
 <template>
@@ -14,7 +14,7 @@ import { HeartIcon } from "@heroicons/vue/24/outline";
   >
     <div class="flex-1">
       <div class="flex items-center gap-2">
-        <HeartIcon class="size-6 text-primary-color" />
+        <Heart class="size-6 text-primary-color" />
         <p class="text-[14px] font-medium">BunzStudio</p>
       </div>
 

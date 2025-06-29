@@ -86,7 +86,18 @@ const handleLogin = handleSubmit(async () => {
   console.log(body.remember);
 
   try {
-    await authStore.login(body);
+    const loginResult = await authStore.login(body);
+    
+    // Check if 2FA is required
+    if (loginResult?.requires2FA) {
+      toast({
+        description: loginResult.message || "Please complete two-factor authentication",
+      });
+      // Redirect to 2FA verification page
+      router.push("/verify-2fa");
+      return;
+    }
+
     setTokenStatus(true); // Set token status to true after successful login
 
     // Check for pending checkout

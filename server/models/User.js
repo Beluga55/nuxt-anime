@@ -19,6 +19,14 @@ const userSchema = new mongoose.Schema({
   },
   emailVerified: { type: Boolean, default: false },
   lastEmailSent: { type: Date },
+  // Two-Factor Authentication fields
+  twoFactorSecret: { type: String },
+  twoFactorEnabled: { type: Boolean, default: false },
+  twoFactorBackupCodes: [{ type: String }],
+  twoFactorTempSecret: { type: String },
+  // Soft delete fields
+  deletedAt: { type: Date },
+  isActive: { type: Boolean, default: true },
 }, {
   timestamps: true
 });
