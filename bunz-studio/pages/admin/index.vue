@@ -7,8 +7,20 @@ import {
   TrendingUp,
   MessageSquare,
   AlertTriangle,
+  Eye,
+  X,
+  MapPin,
+  Calendar,
+  User,
 } from "lucide-vue-next";
 import { useOrderStore } from "@/store/order/index.js";
+import { useToast } from "@/components/ui/toast/use-toast";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 // Middleware to protect admin routes
 definePageMeta({
@@ -29,6 +41,11 @@ const activeSection = computed(() => route.query.section || 'overview');
 const recentOrders = ref<any[]>([]);
 const isLoadingOrders = ref(false);
 const allOrders = ref<any[]>([]);
+
+// Order details modal state
+const showOrderDetails = ref(false);
+const selectedOrderDetails = ref<any>(null);
+const isLoadingOrderDetails = ref(false);
 
 // Computed properties
 const userName = computed(() => {
@@ -62,6 +79,25 @@ const fetchRecentOrders = async (limit = 5) => {
     }
   } finally {
     isLoadingOrders.value = false;
+  }
+};
+
+// Fetch detailed order information
+const viewOrderDetails = async (orderId: string) => {
+  try {
+    isLoadingOrderDetails.value = true;
+    const response = await orderStore.viewOrderDetails(orderId);
+    selectedOrderDetails.value = response;
+    showOrderDetails.value = true;
+  } catch (error) {
+    console.error('Error fetching order details:', error);
+    useToast().toast({
+      title: 'Error',
+      description: 'Failed to fetch order details',
+      variant: 'destructive'
+    });
+  } finally {
+    isLoadingOrderDetails.value = false;
   }
 };
 
@@ -257,6 +293,15 @@ const formatDate = (date: string) => {
 const formatCurrency = (amount: number) => {
   return `RM ${amount.toFixed(2)}`;
 };
+
+// Helper function to get proper image URL
+const getImageUrl = (imageUrl: string): string | undefined => {
+  if (!imageUrl) return undefined;
+  
+  // The backend now returns full Google Cloud Storage signed URLs
+  // so we can return the URL as-is
+  return imageUrl;
+};
 </script>
 
 <template>
@@ -434,7 +479,15 @@ const formatCurrency = (amount: number) => {
                 {{ formatCurrency(order.totalAmount || order.totalPrice || 0) }}
               </td>
               <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                <Button variant="outline" size="sm">View</Button>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  @click="viewOrderDetails(order._id || order.id)"
+                  :disabled="isLoadingOrderDetails"
+                >
+                  <Eye class="w-4 h-4 mr-1" />
+                  View
+                </Button>
               </td>
             </tr>
           </tbody>
@@ -591,6 +644,129 @@ const formatCurrency = (amount: number) => {
         </table>
       </div>
     </div>
+
+    <!-- Order Details Modal -->
+    <Dialog v-model:open="showOrderDetails">
+      <DialogContent class="max-w-4xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle class="text-xl font-bold">Order Details</DialogTitle>
+        </DialogHeader>
+        
+        <div v-if="isLoadingOrderDetails" class="p-8 text-center">
+          <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-color mx-auto"></div>
+          <p class="mt-2 text-gray-600">Loading order details...</p>
+        </div>
+
+        <div v-else-if="selectedOrderDetails" class="space-y-6">
+          <!-- Order Header -->
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div class="bg-gray-50 rounded-lg p-4">
+              <div class="flex items-center space-x-2 mb-2">
+                <ShoppingBag class="w-5 h-5 text-gray-600" />
+                <h3 class="font-medium text-gray-900">Order Info</h3>
+              </div>
+              <p class="text-sm text-gray-600">Order ID: {{ selectedOrderDetails.metadata?.order_id || selectedOrderDetails._id.slice(-8) }}</p>
+              <p class="text-sm text-gray-600">Payment: {{ selectedOrderDetails.paymentMethod }}</p>
+            </div>
+            
+            <div class="bg-gray-50 rounded-lg p-4">
+              <div class="flex items-center space-x-2 mb-2">
+                <User class="w-5 h-5 text-gray-600" />
+                <h3 class="font-medium text-gray-900">Customer</h3>
+              </div>
+              <p class="text-sm text-gray-600">{{ selectedOrderDetails.user?.username }}</p>
+              <p class="text-sm text-gray-600">{{ selectedOrderDetails.user?.email }}</p>
+              <p class="text-sm text-gray-600">{{ selectedOrderDetails.user?.phone }}</p>
+            </div>
+            
+            <div class="bg-gray-50 rounded-lg p-4">
+              <div class="flex items-center space-x-2 mb-2">
+                <Calendar class="w-5 h-5 text-gray-600" />
+                <h3 class="font-medium text-gray-900">Order Date</h3>
+              </div>
+              <p class="text-sm text-gray-600">{{ formatDate(selectedOrderDetails.datePlaced) }}</p>
+              <div class="mt-2">
+                <span :class="getStatusColor(selectedOrderDetails.status)" class="px-2 py-1 text-xs rounded-full">
+                  {{ selectedOrderDetails.status }}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Shipping Address -->
+          <div class="bg-gray-50 rounded-lg p-4">
+            <div class="flex items-center space-x-2 mb-3">
+              <MapPin class="w-5 h-5 text-gray-600" />
+              <h3 class="font-medium text-gray-900">Shipping Address</h3>
+            </div>
+            <div class="text-sm text-gray-600">
+              <p>{{ selectedOrderDetails.shippingAddress?.address }}</p>
+              <p>{{ selectedOrderDetails.shippingAddress?.city }}, {{ selectedOrderDetails.shippingAddress?.postalCode }}</p>
+              <p>{{ selectedOrderDetails.shippingAddress?.country }}</p>
+            </div>
+          </div>
+
+          <!-- Order Items -->
+          <div>
+            <h3 class="font-medium text-gray-900 mb-4">Order Items</h3>
+            <div class="space-y-4">
+              <div
+                v-for="item in selectedOrderDetails.orderItems"
+                :key="item.product._id"
+                class="flex items-center space-x-4 p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
+              >
+                <div class="flex-shrink-0 h-20 w-20 relative">
+                  <img
+                    v-if="getImageUrl(item.product.image)"
+                    class="h-20 w-20 rounded-lg object-cover shadow-sm border border-gray-200"
+                    :src="getImageUrl(item.product.image)"
+                    :alt="item.product.name"
+                    @error="(e: Event) => {
+                      const target = e.target as HTMLImageElement;
+                      if (target) {
+                        target.style.display = 'none';
+                        target.nextElementSibling?.classList.remove('hidden');
+                      }
+                    }"
+                    loading="lazy"
+                  />
+                  <div class="h-20 w-20 rounded-lg bg-gray-100 border border-gray-200 flex items-center justify-center hidden">
+                    <Package class="w-8 h-8 text-gray-400" />
+                  </div>
+                  <div v-if="!getImageUrl(item.product.image)" class="h-20 w-20 rounded-lg bg-gray-100 border border-gray-200 flex items-center justify-center">
+                    <Package class="w-8 h-8 text-gray-400" />
+                    <span class="sr-only">No image available</span>
+                  </div>
+                </div>
+                <div class="flex-1">
+                  <div class="flex justify-between">
+                    <div>
+                      <h4 class="font-medium text-gray-900">{{ item.product.name }}</h4>
+                      <p class="text-sm text-gray-600">{{ item.product.category }}</p>
+                      <p class="text-sm text-gray-600">Quantity: {{ item.qty }}</p>
+                    </div>
+                    <div class="text-right">
+                      <p class="font-medium text-gray-900">RM{{ item.product.price.toFixed(2) }}</p>
+                      <p class="text-sm text-gray-600">Total: RM{{ (item.product.price * item.qty).toFixed(2) }}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Order Total -->
+          <div class="border-t pt-4">
+            <div class="flex justify-between items-center">
+              <span class="text-lg font-medium text-gray-900">Order Total:</span>
+              <span class="text-lg font-bold text-primary-color">
+                RM{{ selectedOrderDetails.orderItems.reduce((total: number, item: any) => total + (item.product.price * item.qty), 0).toFixed(2) }}
+              </span>
+            </div>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
   </div>
 </template>
 

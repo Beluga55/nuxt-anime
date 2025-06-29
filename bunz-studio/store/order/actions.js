@@ -48,4 +48,10 @@ export default {
 
     return response;
   },
+  async viewOrderDetails(orderId) {
+    const [response, error] = await useApi().order.viewOrderDetails(orderId);
+    if (error) return;
+
+    return response;
+  },
 };

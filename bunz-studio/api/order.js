@@ -29,5 +29,11 @@ export default () => {
         const orderRes = await axiosClient.get(url).then((res) => res.data);
         return orderRes;
       }),
+    viewOrderDetails: async (orderId) =>
+      apiWrapper(async () => {
+        const url = `/admin/orders/${orderId}`;
+        const orderRes = await axiosClient.get(url).then((res) => res.data);
+        return orderRes;
+      }),
   };
 };

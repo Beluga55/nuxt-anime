@@ -1,6 +1,7 @@
 import Order from "../models/Order.js";
 import User from "../models/User.js";
 import Product from "../models/Product.js";
+import { getProductsImage } from "./getImagesFromCloud.js";
 
 // Get all orders for admin
 export const getAdminOrders = async (req, res) => {
@@ -121,7 +122,24 @@ export const getOrderDetails = async (req, res) => {
       return res.status(404).json({ message: "Order not found" });
     }
 
-    res.status(200).json(order);
+    // Process product images to get Google Cloud Storage signed URLs
+    const processedOrderItems = await Promise.all(
+      order.orderItems.map(async (item) => ({
+        ...item.toObject(),
+        product: {
+          ...item.product.toObject(),
+          image: await getProductsImage(item.product.image)
+        }
+      }))
+    );
+
+    // Return the order with processed image URLs
+    const orderWithImages = {
+      ...order.toObject(),
+      orderItems: processedOrderItems
+    };
+
+    res.status(200).json(orderWithImages);
   } catch (error) {
     res.status(500).json({ message: "Error fetching order details", error: error.message });
   }
