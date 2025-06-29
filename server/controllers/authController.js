@@ -562,7 +562,8 @@ export const getUserProfile = async (req, res) => {
       country: user.country,
       twoFactorEnabled: user.twoFactorEnabled,
       emailPreferences: user.emailPreferences,
-      isGoogle: user.isGoogle
+      isGoogle: user.isGoogle,
+      isAdmin: user.isAdmin
     });
   } catch (error) {
     console.error("Error fetching user profile:", error);

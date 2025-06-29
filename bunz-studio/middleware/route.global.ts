@@ -15,6 +15,15 @@ export default defineNuxtRouteMiddleware((to) => {
     return;
   }
 
+  // Admin routes are handled by admin middleware, so allow them here if user has token
+  if (to.path.startsWith('/admin')) {
+    if (!token) {
+      return navigateTo("/login");
+    }
+    // Let admin middleware handle the admin check
+    return;
+  }
+
   // If no token, redirect to login
   if (!token) {
     return navigateTo("/login");

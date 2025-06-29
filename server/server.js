@@ -8,6 +8,10 @@ import authRoutes from "./routes/authRoutes.js";
 import stripeRoutes from "./routes/stripeRoutes.js";
 import orderRoutes from "./routes/orderRoutes.js";
 import userPreferencesRoutes from "./routes/userPreferencesRoutes.js";
+import adminProductRoutes from "./routes/adminProductRoutes.js";
+import adminOrderRoutes from "./routes/adminOrderRoutes.js";
+import adminUserRoutes from "./routes/adminUserRoutes.js";
+import adminSupportRoutes from "./routes/adminSupportRoutes.js";
 import { stripeWebhookMiddleware } from "./middleware/stripeWebhookMiddleware.js";
 
 const app = express();
@@ -23,6 +27,10 @@ app.use("/auth", authRoutes);
 app.use("/api", stripeRoutes);
 app.use("/api/orders", orderRoutes);
 app.use("/api/users", userPreferencesRoutes);
+app.use("/admin/products", adminProductRoutes);
+app.use("/admin/orders", adminOrderRoutes);
+app.use("/admin/users", adminUserRoutes);
+app.use("/admin/support", adminSupportRoutes);
 
 const port = 8080;
 

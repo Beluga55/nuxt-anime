@@ -2,96 +2,80 @@
 import {
   User,
   ShoppingBag,
-  Settings,
-  Shield,
-  HelpCircle,
+  Package,
+  Users,
+  MessageSquare,
   LogOut,
-  Phone,
-  Globe,
   Menu,
   X,
   Bell,
-  CreditCard,
   BarChart3,
-  IdCard,
+  Home,
+  Shield,
+  CreditCard,
 } from "lucide-vue-next";
-import { useAuthStore } from "~/store/auth";
-import { useOrderStore } from "~/store/order";
 import { useToast } from "@/components/ui/toast/use-toast";
 import { useTokenStatus } from "@/composables/useTokenStatus";
 
-const authStore = useAuthStore();
-const orderStore = useOrderStore();
 const { toast } = useToast();
 const { setTokenStatus } = useTokenStatus();
 const router = useRouter();
 const route = useRoute();
 
 // Reactive state
-const activeSection = ref("overview");
 const isMobileSidebarOpen = ref(false);
-const userInfo = ref(null);
-const isGoogleUser = ref(false);
+const userInfo = ref<any>(null);
 const isAdmin = ref(false);
-
-// Sidebar navigation items
-const sidebarItems = computed(() => {
-  const allItems = [
-    {
-      id: "overview",
-      label: "Overview",
-      icon: BarChart3,
-      description: "Dashboard overview",
-      route: "/profile",
-    },
-    {
-      id: "account",
-      label: "Account Details",
-      icon: IdCard,
-      description: "Personal information",
-      route: "/profile?section=account",
-    },
-    {
-      id: "orders",
-      label: "Order History",
-      icon: ShoppingBag,
-      description: "Your past orders",
-      route: "/profile?section=orders",
-    },
-    {
-      id: "settings",
-      label: "Preferences",
-      icon: Settings,
-      description: "Account settings",
-      route: "/profile?section=settings",
-    },
-    {
-      id: "security",
-      label: "Security",
-      icon: Shield,
-      description: "Password & security",
-      route: "/profile?section=security",
-    },
-    {
-      id: "support",
-      label: "Help & Support",
-      icon: HelpCircle,
-      description: "Get assistance",
-      route: "/profile?section=support",
-    },
-  ];
-
-  // Filter out security section for Google users
-  if (isGoogleUser.value) {
-    return allItems.filter(item => item.id !== 'security');
-  }
-  
-  return allItems;
+const isLoading = ref(true);
+const adminStats = ref({
+  totalUsers: 0,
+  totalOrders: 0,
+  totalRevenue: 0,
+  pendingSupport: 0
 });
+
+// Admin sidebar navigation items
+const sidebarItems = computed(() => [
+  {
+    id: "overview",
+    label: "Dashboard",
+    icon: BarChart3,
+    description: "Overview & Analytics",
+    route: "/admin",
+  },
+  {
+    id: "orders",
+    label: "Orders",
+    icon: ShoppingBag,
+    description: "Order management",
+    route: "/admin?section=orders",
+  },
+  {
+    id: "products",
+    label: "Products",
+    icon: Package,
+    description: "Manage inventory",
+    route: "/admin?section=products",
+  },
+  {
+    id: "users",
+    label: "Users",
+    icon: Users,
+    description: "User management",
+    route: "/admin?section=users",
+  },
+  {
+    id: "support",
+    label: "Support Tickets",
+    icon: MessageSquare,
+    description: "Support management",
+    route: "/admin?section=support",
+  },
+]);
 
 // Computed properties
 const userName = computed(() => {
-  return userInfo.value?.name || userInfo.value?.email?.split("@")[0] || "User";
+  return userInfo.value?.name || userInfo.value?.email?.split("@")[0] || "Admin";
 });
 
 const profilePicture = computed(() => {
@@ -113,13 +97,60 @@ const fetchUserProfile = async () => {
           'Authorization': `Bearer ${token}`
         }
       });
-      isGoogleUser.value = response.isGoogle || false;
       isAdmin.value = response.isAdmin || false;
+      if (!isAdmin.value) {
+        toast({
+          variant: "destructive",
+          description: "Access denied. Admin privileges required.",
+        });
+        router.push("/");
+        return;
+      }
     }
   } catch (error) {
     console.error('Error fetching user profile:', error);
-    isGoogleUser.value = false;
-    isAdmin.value = false;
+    toast({
+      variant: "destructive",
+      description: "Failed to verify admin access",
+    });
+    router.push("/login");
+  }
+};
+
+const fetchAdminStats = async () => {
+  try {
+    const token = localStorage.getItem('token');
+    if (!token) return;
+
+    // Fetch stats from all admin endpoints in parallel
+    const [userStats, orderStats, supportStats] = await Promise.all([
+      $fetch('http://localhost:8080/admin/users/stats', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      }),
+      $fetch('http://localhost:8080/admin/orders/stats', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      }),
+      $fetch('http://localhost:8080/admin/support/stats', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      })
+    ]);
+
+    // Update admin stats with real data
+    adminStats.value = {
+      totalUsers: userStats.totalUsers || 0,
+      totalOrders: orderStats.totalOrders || 0,
+      totalRevenue: orderStats.totalRevenue || 0,
+      pendingSupport: supportStats.statusBreakdown?.open || 0
+    };
+  } catch (error) {
+    console.error('Error fetching admin stats:', error);
+    // Fallback to zero values if API fails
+    adminStats.value = {
+      totalUsers: 0,
+      totalOrders: 0,
+      totalRevenue: 0,
+      pendingSupport: 0
+    };
   }
 };
 
@@ -136,46 +167,36 @@ const handleLogout = () => {
 
 const navigateToSection = (sectionId: string) => {
   if (sectionId === "overview") {
-    router.push("/profile");
+    router.push("/admin");
   } else {
-    router.push(`/profile?section=${sectionId}`);
+    router.push(`/admin?section=${sectionId}`);
   }
   isMobileSidebarOpen.value = false;
 };
 
-// Watch for Google users accessing security section directly
-watch([() => route.query.section, isGoogleUser], ([newSection, isGoogle]) => {
-  if (isGoogle && newSection === 'security') {
-    // Redirect Google users away from security section
-    router.push('/profile');
-    toast({
-      description: "Security settings are managed by your Google account",
-      variant: "default"
-    });
-  }
-});
+const goToMainSite = () => {
+  router.push("/");
+};
 
 // Lifecycle
 onMounted(async () => {
   const loginData = localStorage.getItem("userInfo");
   if (loginData) {
     userInfo.value = JSON.parse(loginData);
-    // Fetch user profile to get isGoogle status
     await fetchUserProfile();
-    // Fetch user orders to populate stats for quick stats display
-    if (userInfo.value?.email) {
-      await orderStore.fetchUserOrders(userInfo.value.email);
-    }
+    await fetchAdminStats();
   } else {
     router.push("/login");
   }
+  isLoading.value = false;
 });
 
 // Provide data to child components
-provide("dashboardData", {
+provide("adminData", {
   activeSection: computed(() => route.query.section || "overview"),
   userInfo,
-  orderStore,
+  isAdmin,
+  adminStats,
   navigateToSection,
 });
 </script>
@@ -207,9 +228,7 @@ provide("dashboardData", {
               />
               <User v-else class="w-8 h-8 text-gray-400" />
               <div class="hidden sm:block">
-                <h1
-                  class="text-lg font-bold text-text-color-dark font-dashboard"
-                >
+                <h1 class="text-lg font-bold text-text-color-dark font-dashboard">
                   {{ userName }}
                 </h1>
                 <p class="text-xs text-gray-600 font-dashboard">
@@ -221,16 +240,14 @@ provide("dashboardData", {
 
           <!-- Right: Action buttons -->
           <div class="flex items-center space-x-3">
-            <!-- Admin Panel Link -->
             <Button 
-              v-if="isAdmin"
-              @click="router.push('/admin')"
+              @click="goToMainSite"
               variant="ghost" 
               size="sm" 
-              class="text-primary-color hover:text-primary-color hover:bg-primary-color/10 hidden sm:flex"
+              class="hidden sm:flex text-gray-600 hover:text-gray-700"
             >
-              <Shield class="w-5 h-5" />
-              <span class="ml-2">Admin Panel</span>
+              <Home class="w-5 h-5" />
+              <span class="ml-2">Main Site</span>
             </Button>
 
             <Button variant="ghost" size="sm" class="hidden sm:flex">
@@ -253,9 +270,7 @@ provide("dashboardData", {
 
     <div class="flex-1 flex overflow-hidden">
       <!-- Sidebar -->
-      <div
-        class="hidden lg:block w-64 flex-shrink-0 bg-white border-r border-gray-200 overflow-y-auto p-6"
-      >
+      <div class="hidden lg:block w-64 flex-shrink-0 bg-white border-r border-gray-200 overflow-y-auto p-6">
         <!-- Navigation -->
         <nav class="space-y-1">
           <button
@@ -288,34 +303,57 @@ provide("dashboardData", {
           </button>
         </nav>
 
-        <!-- Quick Stats Card -->
-        <div v-if="orderStore.ordersStats" class="bg-gray-50 rounded-lg p-4">
-          <h3 class="text-sm font-medium text-gray-900 mb-3 font-dashboard">
-            Quick Stats
-          </h3>
+        <!-- Admin Stats Card -->
+        <div v-if="!isLoading" class="mt-6 bg-primary-color/10 rounded-lg p-4">
+          <div class="flex items-center space-x-2 mb-3">
+            <BarChart3 class="w-4 h-4 text-primary-color" />
+            <h3 class="text-sm font-medium text-primary-color font-dashboard">
+              Quick Stats
+            </h3>
+          </div>
           <div class="space-y-3">
             <div class="flex items-center justify-between">
               <div class="flex items-center space-x-2">
-                <ShoppingBag class="w-4 h-4 text-gray-400" />
-                <span class="text-sm text-gray-600">Total Orders</span>
+                <Users class="w-3 h-3 text-gray-400" />
+                <span class="text-xs text-gray-600">Total Users</span>
               </div>
-              <span class="text-sm font-semibold text-primary-color">{{
-                orderStore.ordersStats.totalOrders
-              }}</span>
+              <span class="text-xs font-semibold text-primary-color">{{ adminStats.totalUsers }}</span>
             </div>
             <div class="flex items-center justify-between">
               <div class="flex items-center space-x-2">
-                <CreditCard class="w-4 h-4 text-gray-400" />
-                <span class="text-sm text-gray-600">Total Spent</span>
+                <ShoppingBag class="w-3 h-3 text-gray-400" />
+                <span class="text-xs text-gray-600">Total Orders</span>
               </div>
-              <span class="text-sm font-semibold text-primary-color"
-                >RM
-                {{
-                  orderStore.ordersStats.totalSpent?.toFixed(2) || "0.00"
-                }}</span
-              >
+              <span class="text-xs font-semibold text-primary-color">{{ adminStats.totalOrders }}</span>
+            </div>
+            <div class="flex items-center justify-between">
+              <div class="flex items-center space-x-2">
+                <CreditCard class="w-3 h-3 text-gray-400" />
+                <span class="text-xs text-gray-600">Revenue</span>
+              </div>
+              <span class="text-xs font-semibold text-primary-color">RM {{ adminStats.totalRevenue.toFixed(2) }}</span>
+            </div>
+            <div class="flex items-center justify-between">
+              <div class="flex items-center space-x-2">
+                <MessageSquare class="w-3 h-3 text-gray-400" />
+                <span class="text-xs text-gray-600">Support</span>
+              </div>
+              <span class="text-xs font-semibold text-orange-600">{{ adminStats.pendingSupport }} pending</span>
             </div>
           </div>
+        </div>
+
+        <!-- Admin Info Card -->
+        <div class="mt-4 bg-gray-50 rounded-lg p-4">
+          <div class="flex items-center space-x-2 mb-2">
+            <Shield class="w-4 h-4 text-primary-color" />
+            <h3 class="text-sm font-medium text-primary-color font-dashboard">
+              Admin Access
+            </h3>
+          </div>
+          <p class="text-xs text-gray-600">
+            You have administrative privileges to manage this application.
+          </p>
         </div>
       </div>
 
@@ -337,25 +375,29 @@ provide("dashboardData", {
       >
         <div class="p-6">
           <div class="flex items-center justify-between mb-6">
-            <h2 class="text-lg font-bold font-dashboard">Navigation</h2>
+            <div class="flex items-center space-x-3">
+              <img
+                v-if="profilePicture"
+                :src="profilePicture"
+                :alt="userName"
+                class="w-10 h-10 rounded-full object-cover border-2 border-primary-color"
+                referrerpolicy="no-referrer"
+              />
+              <User v-else class="w-10 h-10 text-gray-400" />
+              <div>
+                <div class="flex items-center space-x-2">
+                  <Shield class="w-5 h-5 text-primary-color" />
+                  <h2 class="text-lg font-bold font-dashboard text-primary-color">Admin Panel</h2>
+                </div>
+                <p class="text-sm text-gray-600">{{ userName }} - Administrator</p>
+              </div>
+            </div>
             <Button
               @click="isMobileSidebarOpen = false"
               variant="ghost"
               size="sm"
             >
               <X class="w-5 h-5" />
-            </Button>
-          </div>
-
-          <!-- Admin Panel Link for Mobile -->
-          <div v-if="isAdmin" class="mb-4">
-            <Button 
-              @click="router.push('/admin'); isMobileSidebarOpen = false"
-              variant="outline"
-              class="w-full justify-start text-primary-color border-primary-color hover:bg-primary-color hover:text-white"
-            >
-              <Shield class="w-5 h-5 mr-2" />
-              Admin Panel
             </Button>
           </div>
 
@@ -389,6 +431,34 @@ provide("dashboardData", {
               </div>
             </button>
           </nav>
+
+          <!-- Mobile Admin Stats -->
+          <div v-if="!isLoading" class="mt-6 bg-primary-color/10 rounded-lg p-4">
+            <div class="flex items-center space-x-2 mb-3">
+              <BarChart3 class="w-4 h-4 text-primary-color" />
+              <h3 class="text-sm font-medium text-primary-color font-dashboard">
+                Quick Stats
+              </h3>
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+              <div class="text-center">
+                <p class="text-lg font-bold text-primary-color">{{ adminStats.totalUsers }}</p>
+                <p class="text-xs text-gray-600">Users</p>
+              </div>
+              <div class="text-center">
+                <p class="text-lg font-bold text-primary-color">{{ adminStats.totalOrders }}</p>
+                <p class="text-xs text-gray-600">Orders</p>
+              </div>
+              <div class="text-center">
+                <p class="text-sm font-bold text-primary-color">RM {{ adminStats.totalRevenue.toFixed(0) }}k</p>
+                <p class="text-xs text-gray-600">Revenue</p>
+              </div>
+              <div class="text-center">
+                <p class="text-lg font-bold text-orange-600">{{ adminStats.pendingSupport }}</p>
+                <p class="text-xs text-gray-600">Support</p>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
