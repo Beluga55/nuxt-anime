@@ -16,4 +16,27 @@ export default {
 
     return products;
   },
+  async fetchAdminProducts(params = {}) {
+    try {
+      this.adminProductsLoading = true;
+      this.adminProductsError = null;
+
+      const [response, error] = await useApi().products.getAdminProducts(params);
+      
+      if (error) {
+        this.adminProductsError = error;
+        return { data: [], meta: {} };
+      }
+
+      this.adminProducts = response.data;
+      this.adminProductsMeta = response.meta;
+
+      return response;
+    } catch (error) {
+      this.adminProductsError = error.message || 'Failed to fetch admin products';
+      return { data: [], meta: {} };
+    } finally {
+      this.adminProductsLoading = false;
+    }
+  },
 };

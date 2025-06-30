@@ -68,7 +68,7 @@ services:
       "--api-key", "${STRIPE_SECRET_KEY}",
       "--device-name", "docker-dev",
       "--skip-verify",
-      "--forward-to", "http://backend:8080/api/webhooks/stripe"
+      "--forward-to", "http://backend:8080/api/webhook"
     ]
     depends_on:
       - backend

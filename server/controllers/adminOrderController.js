@@ -40,36 +40,29 @@ export const getAdminOrders = async (req, res) => {
           userName: { $arrayElemAt: ['$userDetails.username', 0] },
           userEmail: { $arrayElemAt: ['$userDetails.email', 0] },
           totalItems: { $sum: '$orderItems.qty' },
-          totalAmount: {
+          calculatedTotal: {
             $sum: {
               $map: {
                 input: '$orderItems',
                 as: 'item',
                 in: {
-                  $multiply: [
-                    '$$item.qty',
-                    {
-                      $let: {
-                        vars: {
-                          product: {
-                            $arrayElemAt: [
-                              {
-                                $filter: {
-                                  input: '$productDetails',
-                                  cond: { $eq: ['$$this._id', '$$item.product'] }
-                                }
-                              },
-                              0
-                            ]
-                          }
-                        },
-                        in: '$$product.price'
-                      }
-                    }
-                  ]
+                  $multiply: ['$$item.qty', '$$item.price']
                 }
               }
             }
+          },
+          finalTotalAmount: {
+            $ifNull: ['$totalAmount', {
+              $sum: {
+                $map: {
+                  input: '$orderItems',
+                  as: 'item',
+                  in: {
+                    $multiply: ['$$item.qty', '$$item.price']
+                  }
+                }
+              }
+            }]
           }
         }
       },
@@ -194,45 +187,19 @@ export const getOrderStats = async (req, res) => {
   try {
     const stats = await Order.aggregate([
       {
-        $lookup: {
-          from: 'products',
-          localField: 'orderItems.product',
-          foreignField: '_id',
-          as: 'productDetails'
-        }
-      },
-      {
         $addFields: {
-          totalAmount: {
-            $sum: {
-              $map: {
-                input: '$orderItems',
-                as: 'item',
-                in: {
-                  $multiply: [
-                    '$$item.qty',
-                    {
-                      $let: {
-                        vars: {
-                          product: {
-                            $arrayElemAt: [
-                              {
-                                $filter: {
-                                  input: '$productDetails',
-                                  cond: { $eq: ['$$this._id', '$$item.product'] }
-                                }
-                              },
-                              0
-                            ]
-                          }
-                        },
-                        in: '$$product.price'
-                      }
-                    }
-                  ]
+          finalTotalAmount: {
+            $ifNull: ['$totalAmount', {
+              $sum: {
+                $map: {
+                  input: '$orderItems',
+                  as: 'item',
+                  in: {
+                    $multiply: ['$$item.qty', '$$item.price']
+                  }
                 }
               }
-            }
+            }]
           }
         }
       },
@@ -240,8 +207,8 @@ export const getOrderStats = async (req, res) => {
         $group: {
           _id: null,
           totalOrders: { $sum: 1 },
-          totalRevenue: { $sum: '$totalAmount' },
-          averageOrderValue: { $avg: '$totalAmount' },
+          totalRevenue: { $sum: '$finalTotalAmount' },
+          averageOrderValue: { $avg: '$finalTotalAmount' },
           pendingOrders: {
             $sum: { $cond: [{ $eq: ['$status', 'Pending'] }, 1, 0] }
           },

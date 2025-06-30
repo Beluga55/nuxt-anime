@@ -79,7 +79,7 @@ export const createCheckoutSession = async (req, res) => {
   }
 };
 
-export const handleStripeWebhook = async (req, res) => {
+export const handleStripeWebhook = async (req, res) => {  
   const sig = req.headers["stripe-signature"];
   let event;
 
@@ -111,10 +111,18 @@ export const handleStripeWebhook = async (req, res) => {
       }
     }
 
+    console.log(`✅ Webhook event verified: ${event.type}`);
+    console.log('📦 Event data:', JSON.stringify({
+      id: event.id,
+      type: event.type,
+      created: event.created
+    }, null, 2));
+
     // Handle different event types
     switch (event.type) {
       case "checkout.session.completed":
         const session = event.data.object;
+        console.log(`💳 Processing checkout session: ${session.id}, payment_status: ${session.payment_status}`);
 
         if (session.payment_status === "paid") {
           // Get the order details from the session
@@ -134,6 +142,7 @@ export const handleStripeWebhook = async (req, res) => {
             
             // 2. Map line items to order items with product references
             const orderItems = [];
+            let totalAmount = 0;
             
             // We need to find the product IDs from our database based on the product names
             for (const item of lineItems) {
@@ -144,14 +153,44 @@ export const handleStripeWebhook = async (req, res) => {
               const product = await Product.findOne({ name: productName });
               
               if (product) {
+                // Validate Stripe data before processing
+                if (!item.amount_total || !item.quantity || item.quantity <= 0) {
+                  console.error(`Invalid Stripe line item data:`, {
+                    description: item.description,
+                    amount_total: item.amount_total,
+                    quantity: item.quantity
+                  });
+                  continue; // Skip this item
+                }
+                
+                // Get price from Stripe (convert from cents to dollars)
+                const priceAtPurchase = Number((item.amount_total / 100 / item.quantity).toFixed(2));
+                const itemTotal = Number((item.amount_total / 100).toFixed(2));
+                
+                // Additional validation
+                if (isNaN(priceAtPurchase) || priceAtPurchase <= 0) {
+                  console.error(`Invalid price calculation for product ${productName}:`, {
+                    amount_total: item.amount_total,
+                    quantity: item.quantity,
+                    calculated_price: priceAtPurchase
+                  });
+                  continue; // Skip this item
+                }
+                
                 orderItems.push({
                   product: product._id,
-                  qty: item.quantity
+                  qty: item.quantity,
+                  price: priceAtPurchase
                 });
+                
+                // Add to total amount
+                totalAmount += itemTotal;
                 
                 // Update inventory (decrease stock)
                 product.stock = Math.max(0, product.stock - item.quantity);
                 await product.save();
+                
+                console.log(`Processed order item: ${productName}, qty: ${item.quantity}, price: $${priceAtPurchase}`);
               } else {
                 console.warn(`Product not found: ${productName}`);
               }
@@ -179,12 +218,29 @@ export const handleStripeWebhook = async (req, res) => {
               paymentMethodType = paymentMethodType.charAt(0).toUpperCase() + paymentMethodType.slice(1);
             }
             
+            // Validate order data before creation
+            if (orderItems.length === 0) {
+              console.error('No valid order items found, cannot create order');
+              return res.status(400).json({ error: 'No valid order items found' });
+            }
+            
+            if (!totalAmount || totalAmount <= 0) {
+              console.error('Invalid total amount:', totalAmount);
+              return res.status(400).json({ error: 'Invalid order total amount' });
+            }
+            
+            // Round total amount to 2 decimal places
+            totalAmount = Number(totalAmount.toFixed(2));
+            
+            console.log(`Creating order with ${orderItems.length} items, total: $${totalAmount}`);
+            
             // 4. Create and save the order
             const order = new Order({
               user: user._id,
               orderItems: orderItems,
               shippingAddress: shippingAddress,
               paymentMethod: paymentMethodType,
+              totalAmount: totalAmount,
               datePlaced: new Date(),
               status: 'Paid', // Since payment is confirmed
               metadata: {
@@ -197,8 +253,23 @@ export const handleStripeWebhook = async (req, res) => {
               }
             });
             
-            await order.save();
-            console.log(`Order saved to database: ${order._id}`);
+            try {
+              await order.save();
+              console.log(`✅ Order saved to database: ${order._id}`);
+            } catch (saveError) {
+              console.error('❌ Error saving order to database:', saveError);
+              console.error('Order data that failed to save:', JSON.stringify({
+                user: order.user,
+                orderItems: order.orderItems.map(item => ({
+                  product: item.product,
+                  qty: item.qty,
+                  price: item.price
+                })),
+                totalAmount: order.totalAmount,
+                status: order.status
+              }, null, 2));
+              return res.status(500).json({ error: 'Failed to save order', details: saveError.message });
+            }
             
             // Send order confirmation email
             try {

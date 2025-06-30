@@ -12,8 +12,12 @@ import {
   MapPin,
   Calendar,
   User,
+  Search,
+  Edit,
+  Filter,
 } from "lucide-vue-next";
 import { useOrderStore } from "@/store/order/index.js";
+import { useProductsStore } from "@/store/products/index.js";
 import { useToast } from "@/components/ui/toast/use-toast";
 import { useAxios } from "@/composables/useAxios";
 import { useAuth } from "@/composables/useAuth";
@@ -22,7 +26,25 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogFooter,
 } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  FormControl,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import { object, string, number } from "zod";
+import { useField, useForm } from "vee-validate";
+import { toTypedSchema } from "@vee-validate/zod";
 
 // Middleware to protect admin routes
 definePageMeta({
@@ -33,13 +55,14 @@ definePageMeta({
 const route = useRoute();
 const router = useRouter();
 const orderStore = useOrderStore();
+const productsStore = useProductsStore();
 const { createAxiosClient } = useAxios();
 const axiosClient = createAxiosClient();
 const { user, getCurrentUser, checkAdminStatus } = useAuth();
 
 // Get data from layout
-const adminStats = inject("adminStats");
-const userInfo = inject("userInfo");
+const adminStats = inject("adminStats") as any || {};
+const userInfo = inject("userInfo") as any || {};
 const activeSection = computed(() => route.query.section || "overview");
 
 // Recent orders state
@@ -51,6 +74,46 @@ const allOrders = ref<any[]>([]);
 const showOrderDetails = ref(false);
 const selectedOrderDetails = ref<any>(null);
 const isLoadingOrderDetails = ref(false);
+
+// Product search and filter state
+const searchQuery = ref("");
+const selectedCategory = ref("all");
+const searchDebounceTimer = ref<NodeJS.Timeout | null>(null);
+
+// Product modal state
+const showViewDialog = ref(false);
+const showEditDialog = ref(false);
+const selectedProduct = ref<any>(null);
+const isUpdatingProduct = ref(false);
+
+// Form validation schema
+const productSchema = toTypedSchema(
+  object({
+    name: string().min(1, "Product name is required"),
+    description: string().min(1, "Description is required"),
+    price: number().positive("Price must be greater than 0"),
+    stock: number().int().min(0, "Stock must be 0 or greater"),
+    category: string().min(1, "Category is required"),
+    width: string().optional(),
+    height: string().optional(),
+    material: string().optional(),
+  })
+);
+
+// Form setup
+const { handleSubmit, resetForm, setValues } = useForm({
+  validationSchema: productSchema,
+});
+
+// Form fields
+const { value: name, errorMessage: nameError } = useField<string>("name");
+const { value: description, errorMessage: descriptionError } = useField<string>("description");
+const { value: price, errorMessage: priceError } = useField<number>("price");
+const { value: stock, errorMessage: stockError } = useField<number>("stock");
+const { value: category, errorMessage: categoryError } = useField<string>("category");
+const { value: width, errorMessage: widthError } = useField<string>("width");
+const { value: height, errorMessage: heightError } = useField<string>("height");
+const { value: material, errorMessage: materialError } = useField<string>("material");
 
 // Computed properties
 const userName = computed(() => {
@@ -119,11 +182,130 @@ const viewOrderDetails = async (orderId: string) => {
   }
 };
 
+// Fetch admin products
+const fetchAdminProducts = async (params = {}) => {
+  try {
+    const searchParams = {
+      ...params,
+      ...(searchQuery.value && { search: searchQuery.value }),
+      ...(selectedCategory.value && selectedCategory.value !== "all" && { category: selectedCategory.value }),
+    };
+    await productsStore.fetchAdminProducts(searchParams);
+  } catch (error) {
+    console.error("Error fetching admin products:", error);
+    useToast().toast({
+      title: "Error",
+      description: "Failed to fetch products",
+      variant: "destructive",
+    });
+  }
+};
+
+// Debounced search function
+const performSearch = () => {
+  if (searchDebounceTimer.value) {
+    clearTimeout(searchDebounceTimer.value);
+  }
+  
+  searchDebounceTimer.value = setTimeout(() => {
+    fetchAdminProducts();
+  }, 300);
+};
+
+// Clear filters
+const clearFilters = () => {
+  searchQuery.value = "";
+  selectedCategory.value = "all";
+  fetchAdminProducts();
+};
+
+// Product modal functions
+const viewProduct = (product: any) => {
+  selectedProduct.value = product;
+  showViewDialog.value = true;
+};
+
+const editProduct = (product: any) => {
+  selectedProduct.value = { ...product }; // Create a copy for editing
+  
+  // Populate form with current product data
+  setValues({
+    name: product.name,
+    description: product.description,
+    price: product.price,
+    stock: product.stock,
+    category: product.category,
+    width: product.width || "",
+    height: product.height || "",
+    material: product.material || "",
+  });
+  
+  showViewDialog.value = false; // Close view dialog if open
+  showEditDialog.value = true;
+};
+
+// Submit form
+const onSubmit = handleSubmit(async (values) => {
+  if (!selectedProduct.value) return;
+  
+  try {
+    isUpdatingProduct.value = true;
+    
+    // Update the product via API (we'll implement this next)
+    await updateProduct(selectedProduct.value._id, values);
+    
+    useToast().toast({
+      title: "Success",
+      description: "Product updated successfully",
+    });
+    
+    showEditDialog.value = false;
+    resetForm();
+    fetchAdminProducts(); // Refresh the list
+  } catch (error) {
+    console.error("Error updating product:", error);
+    useToast().toast({
+      title: "Error",
+      description: "Failed to update product",
+      variant: "destructive",
+    });
+  } finally {
+    isUpdatingProduct.value = false;
+  }
+});
+
+// Cancel edit
+const cancelEdit = () => {
+  showEditDialog.value = false;
+  resetForm();
+};
+
+// Update product API call
+const updateProduct = async (productId: string, productData: any) => {
+  const [result, error] = await useNuxtApp().$api.products.updateProduct(productId, productData);
+  if (error) {
+    throw new Error(error);
+  }
+  return result;
+};
+
 // Watch for active section changes
 watch(activeSection, (newSection) => {
   if (newSection === "orders") {
     fetchRecentOrders(50); // Fetch more orders for the orders section
+  } else if (newSection === "products") {
+    fetchAdminProducts(); // Fetch products when switching to products section
   }
+});
+
+// Watch for search changes
+watch(searchQuery, () => {
+  performSearch();
+});
+
+// Watch for category filter changes
+watch(selectedCategory, () => {
+  fetchAdminProducts();
 });
 
 // Lifecycle
@@ -134,71 +316,20 @@ onMounted(() => {
   if (activeSection.value === "orders") {
     fetchRecentOrders(50);
   }
+  
+  // If user refreshes on products section, fetch products
+  if (activeSection.value === "products") {
+    fetchAdminProducts();
+  }
 });
 
-// Mock data for demonstration (fallback)
-const mockOrders = ref([
-  {
-    id: 1,
-    orderId: "ORD-2024-001",
-    customerName: "John Doe",
-    customerEmail: "john@example.com",
-    totalAmount: 299.99,
-    status: "Processing",
-    date: "2024-01-15",
-    items: 3,
-  },
-  {
-    id: 2,
-    orderId: "ORD-2024-002",
-    customerName: "Jane Smith",
-    customerEmail: "jane@example.com",
-    totalAmount: 156.5,
-    status: "Shipped",
-    date: "2024-01-14",
-    items: 2,
-  },
-  {
-    id: 3,
-    orderId: "ORD-2024-003",
-    customerName: "Bob Wilson",
-    customerEmail: "bob@example.com",
-    totalAmount: 89.99,
-    status: "Delivered",
-    date: "2024-01-13",
-    items: 1,
-  },
-]);
 
-const mockProducts = ref([
-  {
-    id: 1,
-    name: "Attack on Titan Figure",
-    category: "Figures",
-    price: 89.99,
-    stock: 25,
-    status: "Active",
-    image: "/placeholder-product.jpg",
-  },
-  {
-    id: 2,
-    name: "Naruto Manga Set",
-    category: "Manga",
-    price: 199.99,
-    stock: 12,
-    status: "Active",
-    image: "/placeholder-product.jpg",
-  },
-  {
-    id: 3,
-    name: "Dragon Ball Poster",
-    category: "Posters",
-    price: 24.99,
-    stock: 0,
-    status: "Out of Stock",
-    image: "/placeholder-product.jpg",
-  },
-]);
+// Product status computation
+const getProductStatus = (stock: number) => {
+  if (stock === 0) return "Out of Stock";
+  if (stock <= 10) return "Low Stock";
+  return "Active";
+};
 
 const mockUsers = ref([
   {
@@ -282,6 +413,8 @@ const getStatusColor = (status: string) => {
       return "text-red-600 bg-red-100 border-red-200";
     case "out of stock":
       return "text-red-600 bg-red-100 border-red-200";
+    case "low stock":
+      return "text-orange-600 bg-orange-100 border-orange-200";
     default:
       return "text-gray-600 bg-gray-100 border-gray-200";
   }
@@ -608,36 +741,137 @@ const getImageUrl = (imageUrl: string): string | undefined => {
         </div>
       </div>
 
+      <!-- Search and Filter Bar -->
+      <div class="mb-6 space-y-4 sm:space-y-0 sm:flex sm:items-center sm:gap-4">
+        <!-- Search Input -->
+        <div class="relative flex-1">
+          <Search class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+          <Input
+            v-model="searchQuery"
+            placeholder="Search products by name or description..."
+            class="pl-10"
+          />
+        </div>
+
+        <!-- Category Filter -->
+        <div class="w-full sm:w-48">
+          <Select v-model="selectedCategory">
+            <SelectTrigger>
+              <Filter class="w-4 h-4 mr-2" />
+              <SelectValue placeholder="All Categories" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Categories</SelectItem>
+              <SelectItem value="Keychains">Keychains</SelectItem>
+              <SelectItem value="Post Cards">Post Cards</SelectItem>
+              <SelectItem value="Badges">Badges</SelectItem>
+              <SelectItem value="Prints">Prints</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        <!-- Clear Filters Button -->
+        <Button
+          variant="outline"
+          @click="clearFilters"
+          :disabled="!searchQuery && (!selectedCategory || selectedCategory === 'all')"
+          class="w-full sm:w-auto"
+        >
+          <X class="w-4 h-4 mr-2" />
+          Clear
+        </Button>
+      </div>
+
+      <!-- Loading State -->
+      <div v-if="productsStore.adminProductsLoading" class="text-center py-8">
+        <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-color mx-auto"></div>
+        <p class="mt-2 text-gray-600">Loading products...</p>
+      </div>
+
+      <!-- Error State -->
+      <div v-else-if="productsStore.adminProductsError" class="text-center py-8">
+        <div class="text-red-600 mb-4">
+          <AlertTriangle class="w-8 h-8 mx-auto mb-2" />
+          <p>Failed to load products</p>
+          <p class="text-sm text-gray-600">{{ productsStore.adminProductsError }}</p>
+        </div>
+        <Button @click="fetchAdminProducts" variant="outline">
+          Try Again
+        </Button>
+      </div>
+
+      <!-- Empty State -->
+      <div v-else-if="!productsStore.adminProducts || productsStore.adminProducts.length === 0" class="text-center py-8">
+        <Package class="w-12 h-12 text-gray-400 mx-auto mb-4" />
+        <p class="text-gray-600">No products found</p>
+      </div>
+
       <!-- Products Grid -->
-      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         <div
-          v-for="product in mockProducts"
-          :key="product.id"
+          v-for="product in productsStore.adminProducts"
+          :key="product._id"
           class="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow"
         >
-          <div
-            class="aspect-square bg-gray-100 rounded-lg mb-4 flex items-center justify-center"
-          >
-            <Package class="w-12 h-12 text-gray-400" />
+          <!-- Product Image -->
+          <div class="aspect-square bg-gray-100 rounded-lg mb-4 flex items-center justify-center overflow-hidden h-48 max-h-48">
+            <img
+              v-if="product.imageUrl"
+              :src="product.imageUrl"
+              :alt="product.name"
+              class="w-full h-full object-cover rounded-lg"
+              @error="(e: Event) => { 
+                const target = e.target as HTMLImageElement;
+                if (target) {
+                  target.style.display = 'none';
+                  const sibling = target.nextElementSibling as HTMLElement;
+                  if (sibling) sibling.style.display = 'flex';
+                }
+              }"
+            />
+            <div class="w-full h-full flex items-center justify-center" style="display: none;">
+              <Package class="w-12 h-12 text-gray-400" />
+            </div>
+            <Package v-if="!product.imageUrl" class="w-12 h-12 text-gray-400" />
           </div>
+          
+          <!-- Product Details -->
           <div>
-            <h3 class="font-semibold text-gray-900 mb-1">{{ product.name }}</h3>
+            <h3 class="font-semibold text-gray-900 mb-1 truncate" :title="product.name">
+              {{ product.name }}
+            </h3>
             <p class="text-sm text-gray-600 mb-2">{{ product.category }}</p>
             <div class="flex items-center justify-between mb-2">
-              <span class="text-lg font-bold text-gray-900">{{
-                formatCurrency(product.price)
-              }}</span>
+              <span class="text-lg font-bold text-gray-900">
+                {{ formatCurrency(product.price) }}
+              </span>
               <span
-                :class="getStatusColor(product.status)"
+                :class="getStatusColor(getProductStatus(product.stock))"
                 class="px-2 py-1 text-xs font-medium rounded-full border"
               >
-                {{ product.status }}
+                {{ getProductStatus(product.stock) }}
               </span>
             </div>
             <p class="text-sm text-gray-600 mb-3">Stock: {{ product.stock }}</p>
             <div class="flex gap-2">
-              <Button variant="outline" size="sm" class="flex-1">Edit</Button>
-              <Button variant="outline" size="sm" class="flex-1">View</Button>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                class="flex-1"
+                @click="editProduct(product)"
+              >
+                <Edit class="w-3 h-3 mr-1" />
+                Edit
+              </Button>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                class="flex-1"
+                @click="viewProduct(product)"
+              >
+                <Eye class="w-3 h-3 mr-1" />
+                View
+              </Button>
             </div>
           </div>
         </div>
@@ -998,11 +1232,11 @@ const getImageUrl = (imageUrl: string): string | undefined => {
                     </div>
                     <div class="text-right">
                       <p class="font-medium text-gray-900">
-                        RM{{ item.product.price.toFixed(2) }}
+                        RM{{ item.price.toFixed(2) }}
                       </p>
                       <p class="text-sm text-gray-600">
                         Total: RM{{
-                          (item.product.price * item.qty).toFixed(2)
+                          (item.price * item.qty).toFixed(2)
                         }}
                       </p>
                     </div>
@@ -1023,7 +1257,7 @@ const getImageUrl = (imageUrl: string): string | undefined => {
                   selectedOrderDetails.orderItems
                     .reduce(
                       (total: number, item: any) =>
-                        total + item.product.price * item.qty,
+                        total + item.price * item.qty,
                       0
                     )
                     .toFixed(2)
@@ -1032,6 +1266,242 @@ const getImageUrl = (imageUrl: string): string | undefined => {
             </div>
           </div>
         </div>
+      </DialogContent>
+    </Dialog>
+
+    <!-- View Product Modal -->
+    <Dialog v-model:open="showViewDialog">
+      <DialogContent class="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle class="text-xl font-bold">Product Details</DialogTitle>
+        </DialogHeader>
+
+        <div v-if="selectedProduct" class="space-y-6">
+          <!-- Product Header -->
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <!-- Product Image -->
+            <div class="aspect-square bg-gray-100 rounded-lg flex items-center justify-center overflow-hidden">
+              <img
+                v-if="selectedProduct.imageUrl"
+                :src="selectedProduct.imageUrl"
+                :alt="selectedProduct.name"
+                class="w-full h-full object-cover rounded-lg"
+              />
+              <Package v-else class="w-16 h-16 text-gray-400" />
+            </div>
+
+            <!-- Basic Info -->
+            <div class="space-y-4">
+              <div>
+                <h3 class="text-lg font-semibold text-gray-900 mb-2">
+                  {{ selectedProduct.name }}
+                </h3>
+                <p class="text-sm text-gray-600">{{ selectedProduct.category }}</p>
+              </div>
+
+              <div class="space-y-2">
+                <div class="flex justify-between">
+                  <span class="text-sm font-medium text-gray-600">Price:</span>
+                  <span class="text-lg font-bold text-gray-900">
+                    {{ formatCurrency(selectedProduct.price) }}
+                  </span>
+                </div>
+                
+                <div class="flex justify-between">
+                  <span class="text-sm font-medium text-gray-600">Stock:</span>
+                  <span class="text-sm text-gray-900">{{ selectedProduct.stock }}</span>
+                </div>
+
+                <div class="flex justify-between">
+                  <span class="text-sm font-medium text-gray-600">Status:</span>
+                  <span
+                    :class="getStatusColor(getProductStatus(selectedProduct.stock))"
+                    class="px-2 py-1 text-xs font-medium rounded-full border"
+                  >
+                    {{ getProductStatus(selectedProduct.stock) }}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Product Details -->
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div class="bg-gray-50 rounded-lg p-4">
+              <h4 class="font-medium text-gray-900 mb-3">Product Specifications</h4>
+              <div class="space-y-2 text-sm">
+                <div class="flex justify-between">
+                  <span class="text-gray-600">Width:</span>
+                  <span class="text-gray-900">{{ selectedProduct.width || 'N/A' }}</span>
+                </div>
+                <div class="flex justify-between">
+                  <span class="text-gray-600">Height:</span>
+                  <span class="text-gray-900">{{ selectedProduct.height || 'N/A' }}</span>
+                </div>
+                <div class="flex justify-between">
+                  <span class="text-gray-600">Material:</span>
+                  <span class="text-gray-900">{{ selectedProduct.material || 'N/A' }}</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="bg-gray-50 rounded-lg p-4">
+              <h4 class="font-medium text-gray-900 mb-3">Performance</h4>
+              <div class="space-y-2 text-sm">
+                <div class="flex justify-between">
+                  <span class="text-gray-600">Rating:</span>
+                  <span class="text-gray-900">{{ (selectedProduct.rating || 0).toFixed(1) }}/5</span>
+                </div>
+                <div class="flex justify-between">
+                  <span class="text-gray-600">Reviews:</span>
+                  <span class="text-gray-900">{{ selectedProduct.numReviews || 0 }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Description -->
+          <div class="bg-gray-50 rounded-lg p-4">
+            <h4 class="font-medium text-gray-900 mb-3">Description</h4>
+            <p class="text-sm text-gray-700">
+              {{ selectedProduct.description || 'No description available.' }}
+            </p>
+          </div>
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" @click="showViewDialog = false">
+            Close
+          </Button>
+          <Button @click="editProduct(selectedProduct)">
+            <Edit class="w-4 h-4 mr-2" />
+            Edit Product
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+
+    <!-- Edit Product Modal -->
+    <Dialog v-model:open="showEditDialog">
+      <DialogContent class="max-w-3xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle class="text-xl font-bold">Edit Product</DialogTitle>
+        </DialogHeader>
+
+        <form @submit="onSubmit" class="space-y-6">
+          <!-- Basic Information -->
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <FormItem>
+              <FormLabel>Product Name *</FormLabel>
+              <FormControl>
+                <Input v-model="name" placeholder="Enter product name" />
+              </FormControl>
+              <FormMessage>{{ nameError }}</FormMessage>
+            </FormItem>
+
+            <FormItem>
+              <FormLabel>Category *</FormLabel>
+              <FormControl>
+                <Select v-model="category">
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select category" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Keychains">Keychains</SelectItem>
+                    <SelectItem value="Post Cards">Post Cards</SelectItem>
+                    <SelectItem value="Badges">Badges</SelectItem>
+                    <SelectItem value="Prints">Prints</SelectItem>
+                  </SelectContent>
+                </Select>
+              </FormControl>
+              <FormMessage>{{ categoryError }}</FormMessage>
+            </FormItem>
+          </div>
+
+          <!-- Price and Stock -->
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <FormItem>
+              <FormLabel>Price (RM) *</FormLabel>
+              <FormControl>
+                <Input 
+                  v-model.number="price" 
+                  type="number" 
+                  step="0.01" 
+                  min="0" 
+                  placeholder="0.00" 
+                />
+              </FormControl>
+              <FormMessage>{{ priceError }}</FormMessage>
+            </FormItem>
+
+            <FormItem>
+              <FormLabel>Stock Quantity *</FormLabel>
+              <FormControl>
+                <Input 
+                  v-model.number="stock" 
+                  type="number" 
+                  min="0" 
+                  placeholder="0" 
+                />
+              </FormControl>
+              <FormMessage>{{ stockError }}</FormMessage>
+            </FormItem>
+          </div>
+
+          <!-- Description -->
+          <FormItem>
+            <FormLabel>Description *</FormLabel>
+            <FormControl>
+              <textarea
+                v-model="description"
+                class="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                placeholder="Enter product description"
+                rows="3"
+              />
+            </FormControl>
+            <FormMessage>{{ descriptionError }}</FormMessage>
+          </FormItem>
+
+          <!-- Specifications -->
+          <div class="border-t pt-4">
+            <h4 class="font-medium text-gray-900 mb-4">Specifications (Optional)</h4>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <FormItem>
+                <FormLabel>Width</FormLabel>
+                <FormControl>
+                  <Input v-model="width" placeholder="e.g., 15cm" />
+                </FormControl>
+                <FormMessage>{{ widthError }}</FormMessage>
+              </FormItem>
+
+              <FormItem>
+                <FormLabel>Height</FormLabel>
+                <FormControl>
+                  <Input v-model="height" placeholder="e.g., 20cm" />
+                </FormControl>
+                <FormMessage>{{ heightError }}</FormMessage>
+              </FormItem>
+
+              <FormItem>
+                <FormLabel>Material</FormLabel>
+                <FormControl>
+                  <Input v-model="material" placeholder="e.g., PVC, ABS" />
+                </FormControl>
+                <FormMessage>{{ materialError }}</FormMessage>
+              </FormItem>
+            </div>
+          </div>
+        </form>
+
+        <DialogFooter>
+          <Button variant="outline" @click="cancelEdit" :disabled="isUpdatingProduct">
+            Cancel
+          </Button>
+          <Button @click="onSubmit" :disabled="isUpdatingProduct">
+            <div v-if="isUpdatingProduct" class="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+            {{ isUpdatingProduct ? 'Updating...' : 'Update Product' }}
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   </div>

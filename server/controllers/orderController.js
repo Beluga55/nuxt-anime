@@ -105,27 +105,13 @@ export const getOrdersByUserEmail = async (req, res) => {
     const total = await Order.countDocuments(filter);
     const totalPages = Math.ceil(total / parseInt(limit));
     
-    // Calculate total spent by joining with products and summing price * qty
+    // Calculate total spent using stored order totals
     const totalSpent = await Order.aggregate([
       { $match: { user: user._id } },
-      { $unwind: "$orderItems" },
-      { 
-        $lookup: {
-          from: "products",
-          localField: "orderItems.product",
-          foreignField: "_id",
-          as: "productDetails"
-        }
-      },
-      { $unwind: "$productDetails" },
       {
         $group: {
           _id: null,
-          total: { 
-            $sum: { 
-              $multiply: ["$productDetails.price", "$orderItems.qty"] 
-            }
-          }
+          total: { $sum: "$totalAmount" }
         }
       }
     ]);
@@ -153,15 +139,15 @@ export const getOrdersByUserEmail = async (req, res) => {
           return {
             name: item.product?.name || 'Product not found',
             quantity: item.qty,
-            price: item.product?.price || 0,
+            price: item.price || 0,
             image: imageUrl,
             category: item.product?.category || ''
           };
         })),
         shippingAddress: order.shippingAddress,
         paymentMethod: order.paymentMethod,
-        totalAmount: order.orderItems.reduce((sum, item) => 
-          sum + (item.product?.price || 0) * item.qty, 0
+        totalAmount: order.totalAmount || order.orderItems.reduce((sum, item) => 
+          sum + (item.price || 0) * item.qty, 0
         )
       })));
     } catch (error) {
@@ -175,14 +161,14 @@ export const getOrdersByUserEmail = async (req, res) => {
         items: order.orderItems.map(item => ({
           name: item.product?.name || 'Product not found',
           quantity: item.qty,
-          price: item.product?.price || 0,
+          price: item.price || 0,
           image: item.product?.image || '',
           category: item.product?.category || ''
         })),
         shippingAddress: order.shippingAddress,
         paymentMethod: order.paymentMethod,
-        totalAmount: order.orderItems.reduce((sum, item) => 
-          sum + (item.product?.price || 0) * item.qty, 0
+        totalAmount: order.totalAmount || order.orderItems.reduce((sum, item) => 
+          sum + (item.price || 0) * item.qty, 0
         )
       }));
     }

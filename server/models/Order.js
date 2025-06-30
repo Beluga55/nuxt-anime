@@ -7,6 +7,7 @@ const orderItemSchema = new mongoose.Schema({
     required: true
   },
   qty: { type: Number, required: true },
+  price: { type: Number, required: true }
 }, { _id : false });
 
 const shippingAddressSchema = new mongoose.Schema({
@@ -21,6 +22,7 @@ const orderSchema = new mongoose.Schema({
   orderItems: [orderItemSchema],
   shippingAddress: shippingAddressSchema,
   paymentMethod: { type: String, required: true },
+  totalAmount: { type: Number, required: true },
   datePlaced: { type: Date, default: Date.now },
   status: { type: String, default: 'Pending' },
   metadata: {
